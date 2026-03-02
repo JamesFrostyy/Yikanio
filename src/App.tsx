@@ -589,7 +589,9 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.92)), url('https://images.unsplash.com/photo-1587841551061-f3bdf01d0fbc?q=80&w=1920&auto=format&fit=crop')`,
+        // Filtrenin saydamlığını azalttım (0.75 ve 0.92 yerine 0.40 ve 0.70 yaptım)
+        // Su ve sanayi tipi yıkama hissiyatı veren yeni bir görsel ekledim
+        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.40), rgba(15, 23, 42, 0.70)), url('https://images.unsplash.com/photo-1585834015690-cb64c12ea847?q=80&w=1920&auto=format&fit=crop')`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -639,7 +641,6 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: "36px" }}>
-          {/* YENİ SAAS LOGOSU: İzometrik Katmanlar */}
           <div
             style={{
               width: "72px",
@@ -684,8 +685,6 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
                   <stop offset="100%" stopColor="#2563EB" />
                 </linearGradient>
               </defs>
-
-              {/* En Üst Katman */}
               <path
                 d="M16 4L28 10.5L16 17L4 10.5L16 4Z"
                 fill="url(#layer-cyan)"
@@ -694,7 +693,6 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
                 strokeWidth="2.5"
                 strokeLinejoin="round"
               />
-              {/* Orta Katman */}
               <path
                 d="M4 16L16 22.5L28 16"
                 stroke="url(#layer-grad)"
@@ -702,7 +700,6 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {/* Alt Katman */}
               <path
                 d="M4 21.5L16 28L28 21.5"
                 stroke="#94A3B8"
@@ -710,8 +707,6 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-
-              {/* Merkez Noktası / Analiz İkonu */}
               <circle cx="16" cy="10.5" r="3" fill="url(#layer-cyan)" />
             </svg>
           </div>
