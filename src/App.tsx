@@ -1,5 +1,44 @@
 import { useState, useEffect, useCallback } from "react";
 
+// ─── TIPLER ──────────────────────────────────────────────────────────────────
+interface HaliTuru {
+  id: string;
+  ad: string;
+  birimFiyat: number;
+  icon: string;
+}
+
+interface HaliKalemi {
+  turId: string;
+  adet: number;
+  m2: number;
+}
+
+interface Siparis {
+  id: string;
+  musteri: string;
+  telefon: string;
+  adres: string;
+  durum: string;
+  notlar: string;
+  fiyat: number;
+  tarih: string;
+  smsDurum: Record<string, boolean>;
+  haliKalemleri: HaliKalemi[];
+}
+
+interface StatusCfg {
+  label: string;
+  color: string;
+  bg: string;
+  icon: string;
+}
+
+interface ToastState {
+  msg: string | null;
+  type: string;
+}
+
 // ─── SUPABASE ────────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://nubrhlnxrajuebphahrp.supabase.co";
 const SUPABASE_KEY =
@@ -22,7 +61,7 @@ async function sbFetch(path: string, options: any = {}): Promise<any> {
 }
 
 // ─── SABİT VERİLER ───────────────────────────────────────────────────────────
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, StatusCfg> = {
   bekliyor: { label: "Bekliyor", color: "#F59E0B", bg: "#FEF3C7", icon: "⏳" },
   toplandı: { label: "Toplandı", color: "#3B82F6", bg: "#DBEAFE", icon: "🚛" },
   yıkamada: { label: "Yıkamada", color: "#8B5CF6", bg: "#EDE9FE", icon: "🫧" },
@@ -47,7 +86,7 @@ const STATUS_CONFIG = {
   },
 };
 
-const VARSAYILAN_HALI_TURLERI = [
+const VARSAYILAN_HALI_TURLERI: HaliTuru[] = [
   { id: "klasik", ad: "Klasik / Düz", birimFiyat: 25, icon: "🟫" },
   { id: "akrilik", ad: "Akrilik", birimFiyat: 30, icon: "🟦" },
   { id: "yun", ad: "Yün", birimFiyat: 45, icon: "🐑" },
@@ -60,43 +99,49 @@ const VARSAYILAN_HALI_TURLERI = [
 
 const STATUSLAR = ["Tümü", ...Object.keys(STATUS_CONFIG)];
 
-// SMS şablonları — halı detayları dahil
-function smsMesaji(durum, order, haliTurleri) {
+// ─── SMS ŞABLONLARI ───────────────────────────────────────────────────────────
+function smsMesaji(
+  durum: string,
+  order: Siparis,
+  haliTurleri: HaliTuru[]
+): string {
   const turListesi = (order.haliKalemleri || [])
-    .map((k) => {
-      const tur = haliTurleri.find((t) => t.id === k.turId);
+    .map((k: HaliKalemi) => {
+      const tur = haliTurleri.find((t: HaliTuru) => t.id === k.turId);
       return `${tur?.ad || k.turId} (${k.m2}m²)`;
     })
     .join(", ");
 
-  const templates = {
-    toplandı: `Sayın ${order.musteri}, halılarınız teslim alındı.\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nToplam Tutar: ₺${order.fiyat}\n\nTemiz360 - 📞 İyi günler dileriz.`,
-    yıkamada: `Sayın ${order.musteri}, halılarınız yıkama sürecine alındı.\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nToplam Tutar: ₺${order.fiyat}\n\nTemiz360 - Kaliteli hizmet garantisi.`,
-    kurutuluyor: `Sayın ${order.musteri}, halılarınız yıkandı ve kurutma aşamasına geçildi.\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nKısa süre içinde teslimata hazır olacak.\n\nTemiz360`,
-    hazır: `Sayın ${order.musteri}, halılarınız teslimata HAZIR! 🎉\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nÖdenecek Tutar: ₺${order.fiyat}\n\nTeslimat için randevu almak ister misiniz? Bizi arayın.\n\nTemiz360`,
-    dağıtımda: `Sayın ${order.musteri}, halılarınız yola çıktı! 🏍️\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nÖdenecek Tutar: ₺${order.fiyat}\n\nDağıtım ekibimiz kısa süre içinde kapınızda olacak.\n\nTemiz360`,
-    teslim_edildi: `Sayın ${order.musteri}, halılarınız teslim edildi. ✅\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nToplam Tutar: ₺${order.fiyat}\n\nTemiz360'ı tercih ettiğiniz için teşekkür ederiz. Tekrar görüşmek üzere! 🪣`,
+  const templates: Record<string, string> = {
+    toplandı: `Sayın ${order.musteri}, halılarınız teslim alındı.\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nToplam Tutar: ₺${order.fiyat}\n\nTemiz360`,
+    yıkamada: `Sayın ${order.musteri}, halılarınız yıkama sürecine alındı.\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nToplam Tutar: ₺${order.fiyat}\n\nTemiz360`,
+    kurutuluyor: `Sayın ${order.musteri}, halılarınız yıkandı ve kurutma aşamasına geçildi.\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\n\nTemiz360`,
+    hazır: `Sayın ${order.musteri}, halılarınız teslimata HAZIR! 🎉\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nÖdenecek Tutar: ₺${order.fiyat}\n\nTemiz360`,
+    dağıtımda: `Sayın ${order.musteri}, halılarınız yola çıktı! 🏍️\n\nSipariş No: ${order.id}\nHalılarınız: ${turListesi}\nÖdenecek Tutar: ₺${order.fiyat}\n\nTemiz360`,
+    teslim_edildi: `Sayın ${order.musteri}, halılarınız teslim edildi. ✅\n\nSipariş No: ${order.id}\nToplam: ₺${order.fiyat}\n\nTemiz360'ı tercih ettiğiniz için teşekkürler!`,
   };
   return templates[durum] || "";
 }
 
 // ─── YARDIMCI ────────────────────────────────────────────────────────────────
-const hesaplaFiyat = (kalemler, turler) =>
+const hesaplaFiyat = (kalemler: HaliKalemi[], turler: HaliTuru[]): number =>
   kalemler.reduce(
     (s, k) =>
       s + (turler.find((t) => t.id === k.turId)?.birimFiyat || 0) * k.m2,
     0
   );
-const toplamM2 = (k) => k.reduce((s, x) => s + (x.m2 || 0), 0);
-const toplamAdet = (k) => k.reduce((s, x) => s + (x.adet || 0), 0);
+const toplamM2 = (k: HaliKalemi[]): number =>
+  k.reduce((s, x) => s + (x.m2 || 0), 0);
+const toplamAdet = (k: HaliKalemi[]): number =>
+  k.reduce((s, x) => s + (x.adet || 0), 0);
 
 // ─── VERİTABANI ──────────────────────────────────────────────────────────────
-async function dbSiparisleriGetir() {
+async function dbSiparisleriGetir(): Promise<Siparis[]> {
   const [siparisler, kalemler] = await Promise.all([
     sbFetch("siparisler?select=*&order=olusturuldu.desc"),
     sbFetch("hali_kalemleri?select=*"),
   ]);
-  return siparisler.map((s) => ({
+  return siparisler.map((s: any) => ({
     id: s.id,
     musteri: s.musteri_ad,
     telefon: s.telefon,
@@ -107,12 +152,16 @@ async function dbSiparisleriGetir() {
     tarih: s.tarih,
     smsDurum: s.sms_durum || {},
     haliKalemleri: kalemler
-      .filter((k) => k.siparis_id === s.id)
-      .map((k) => ({ turId: k.tur_id, adet: k.adet, m2: Number(k.m2) })),
+      .filter((k: any) => k.siparis_id === s.id)
+      .map((k: any) => ({ turId: k.tur_id, adet: k.adet, m2: Number(k.m2) })),
   }));
 }
 
-async function dbSiparisKaydet(form, editingId = null) {
+async function dbSiparisKaydet(
+  form: any,
+  editingId: string | null = null,
+  haliTurleri: HaliTuru[]
+): Promise<string> {
   const id = editingId || `SP-${String(Date.now()).slice(-6)}`;
   if (editingId) {
     await sbFetch(`siparisler?id=eq.${editingId}`, {
@@ -151,20 +200,21 @@ async function dbSiparisKaydet(form, editingId = null) {
     await sbFetch("hali_kalemleri", {
       method: "POST",
       body: JSON.stringify(
-        form.haliKalemleri.map((k) => ({
+        form.haliKalemleri.map((k: HaliKalemi) => ({
           siparis_id: editingId || id,
           tur_id: k.turId,
           adet: k.adet,
           m2: k.m2,
-          tutar: 0,
+          tutar:
+            (haliTurleri.find((t) => t.id === k.turId)?.birimFiyat || 0) * k.m2,
         }))
       ),
     });
   }
-  return editingId || id;
+  return id;
 }
 
-async function dbDurumGuncelle(id, durum) {
+async function dbDurumGuncelle(id: string, durum: string): Promise<void> {
   await sbFetch(`siparisler?id=eq.${id}`, {
     method: "PATCH",
     prefer: "return=minimal",
@@ -172,7 +222,10 @@ async function dbDurumGuncelle(id, durum) {
   });
 }
 
-async function dbSmsGuncelle(id, smsDurum) {
+async function dbSmsGuncelle(
+  id: string,
+  smsDurum: Record<string, boolean>
+): Promise<void> {
   await sbFetch(`siparisler?id=eq.${id}`, {
     method: "PATCH",
     prefer: "return=minimal",
@@ -180,7 +233,12 @@ async function dbSmsGuncelle(id, smsDurum) {
   });
 }
 
-async function dbSmsLog(siparisId, telefon, mesaj, durumAdi) {
+async function dbSmsLog(
+  siparisId: string,
+  telefon: string,
+  mesaj: string,
+  durumAdi: string
+): Promise<void> {
   await sbFetch("sms_log", {
     method: "POST",
     prefer: "return=minimal",
@@ -193,9 +251,8 @@ async function dbSmsLog(siparisId, telefon, mesaj, durumAdi) {
   });
 }
 
-// ─── BILEŞENLER ──────────────────────────────────────────────────────────────
-
-function StatusBadge({ durum }) {
+// ─── BİLEŞENLER ──────────────────────────────────────────────────────────────
+function StatusBadge({ durum }: { durum: string }) {
   const cfg = STATUS_CONFIG[durum] || STATUS_CONFIG.bekliyor;
   return (
     <span
@@ -214,7 +271,7 @@ function StatusBadge({ durum }) {
   );
 }
 
-function Toast({ msg, type }) {
+function Toast({ msg, type }: { msg: string | null; type: string }) {
   if (!msg) return null;
   return (
     <div
@@ -239,11 +296,18 @@ function Toast({ msg, type }) {
   );
 }
 
-// ─── HALİ TÜRLERİ YÖNETİM MODALI ────────────────────────────────────────────
-function HaliYonetimModal({ turler, onClose, onSave }) {
-  const [liste, setListe] = useState(turler.map((t) => ({ ...t })));
+// ─── HALI YÖNETİM MODALI ─────────────────────────────────────────────────────
+function HaliYonetimModal({
+  turler,
+  onClose,
+  onSave,
+}: {
+  turler: HaliTuru[];
+  onClose: () => void;
+  onSave: (l: HaliTuru[]) => void;
+}) {
+  const [liste, setListe] = useState<HaliTuru[]>(turler.map((t) => ({ ...t })));
   const [yeni, setYeni] = useState({ ad: "", birimFiyat: "", icon: "🪄" });
-
   const ikonlar = [
     "🟫",
     "🟦",
@@ -261,13 +325,11 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
     "🌸",
   ];
 
-  const guncelle = (i, field, val) => {
+  const guncelle = (i: number, field: string, val: any) => {
     const k = [...liste];
     k[i] = { ...k[i], [field]: field === "birimFiyat" ? +val : val };
     setListe(k);
   };
-
-  const sil = (i) => setListe(liste.filter((_, idx) => idx !== i));
 
   const ekle = () => {
     if (!yeni.ad || !yeni.birimFiyat) return;
@@ -286,7 +348,7 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
     setYeni({ ad: "", birimFiyat: "", icon: "🪄" });
   };
 
-  const inp = {
+  const inp: any = {
     padding: "8px 10px",
     borderRadius: 8,
     border: "1.5px solid #E5E7EB",
@@ -321,7 +383,7 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
           overflowY: "auto",
           boxShadow: "0 25px 60px rgba(0,0,0,0.2)",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: any) => e.stopPropagation()}
       >
         <div
           style={{
@@ -348,15 +410,13 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
             ✕
           </button>
         </div>
-
-        {/* Mevcut türler */}
         <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
           {liste.map((t, i) => (
             <div
               key={t.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "40px 1fr 90px 36px",
+                gridTemplateColumns: "40px 1fr 110px 36px",
                 gap: 8,
                 alignItems: "center",
               }}
@@ -369,7 +429,7 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
                   padding: "4px",
                 }}
                 value={t.icon}
-                onChange={(e) => guncelle(i, "icon", e.target.value)}
+                onChange={(e: any) => guncelle(i, "icon", e.target.value)}
               >
                 {ikonlar.map((ik) => (
                   <option key={ik} value={ik}>
@@ -378,35 +438,28 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
                 ))}
               </select>
               <input
-                style={{ ...inp, width: "100%", boxSizing: "border-box" }}
+                style={{
+                  ...inp,
+                  width: "100%",
+                  boxSizing: "border-box" as any,
+                }}
                 value={t.ad}
-                onChange={(e) => guncelle(i, "ad", e.target.value)}
+                onChange={(e: any) => guncelle(i, "ad", e.target.value)}
               />
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ fontSize: 12, color: "#6B7280" }}>₺</span>
                 <input
-                  style={{
-                    ...inp,
-                    width: "100%",
-                    boxSizing: "border-box",
-                    textAlign: "center",
-                  }}
+                  style={{ ...inp, width: "60px", textAlign: "center" }}
                   type="number"
                   value={t.birimFiyat}
-                  onChange={(e) => guncelle(i, "birimFiyat", e.target.value)}
+                  onChange={(e: any) =>
+                    guncelle(i, "birimFiyat", e.target.value)
+                  }
                 />
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: "#9CA3AF",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  /m²
-                </span>
+                <span style={{ fontSize: 10, color: "#9CA3AF" }}>/m²</span>
               </div>
               <button
-                onClick={() => sil(i)}
+                onClick={() => setListe(liste.filter((_, idx) => idx !== i))}
                 style={{
                   background: "#FEE2E2",
                   border: "none",
@@ -423,8 +476,6 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
             </div>
           ))}
         </div>
-
-        {/* Yeni tür ekle */}
         <div
           style={{
             background: "#F8FAFC",
@@ -440,7 +491,7 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
               fontWeight: 700,
               color: "#6B7280",
               marginBottom: 10,
-              textTransform: "uppercase",
+              textTransform: "uppercase" as any,
               letterSpacing: "0.05em",
             }}
           >
@@ -449,7 +500,7 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "40px 1fr 90px auto",
+              gridTemplateColumns: "40px 1fr 110px auto",
               gap: 8,
               alignItems: "center",
             }}
@@ -462,7 +513,7 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
                 padding: "4px",
               }}
               value={yeni.icon}
-              onChange={(e) => setYeni({ ...yeni, icon: e.target.value })}
+              onChange={(e: any) => setYeni({ ...yeni, icon: e.target.value })}
             >
               {ikonlar.map((ik) => (
                 <option key={ik} value={ik}>
@@ -471,27 +522,23 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
               ))}
             </select>
             <input
-              style={{ ...inp, width: "100%", boxSizing: "border-box" }}
+              style={{ ...inp, width: "100%", boxSizing: "border-box" as any }}
               value={yeni.ad}
-              onChange={(e) => setYeni({ ...yeni, ad: e.target.value })}
+              onChange={(e: any) => setYeni({ ...yeni, ad: e.target.value })}
               placeholder="Halı türü adı"
             />
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 12, color: "#6B7280" }}>₺</span>
               <input
-                style={{
-                  ...inp,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  textAlign: "center",
-                }}
+                style={{ ...inp, width: "60px", textAlign: "center" }}
                 type="number"
                 value={yeni.birimFiyat}
-                onChange={(e) =>
+                onChange={(e: any) =>
                   setYeni({ ...yeni, birimFiyat: e.target.value })
                 }
                 placeholder="0"
               />
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>/m²</span>
             </div>
             <button
               onClick={ekle}
@@ -505,14 +552,13 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
                 fontWeight: 700,
                 fontSize: 13,
                 fontFamily: "inherit",
-                whiteSpace: "nowrap",
+                whiteSpace: "nowrap" as any,
               }}
             >
               + Ekle
             </button>
           </div>
         </div>
-
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button
             onClick={onClose}
@@ -553,8 +599,18 @@ function HaliYonetimModal({ turler, onClose, onSave }) {
 }
 
 // ─── SMS MODALI ───────────────────────────────────────────────────────────────
-function SmsModal({ order, haliTurleri, onClose, onSend }) {
-  const [selected, setSelected] = useState(null);
+function SmsModal({
+  order,
+  haliTurleri,
+  onClose,
+  onSend,
+}: {
+  order: Siparis;
+  haliTurleri: HaliTuru[];
+  onClose: () => void;
+  onSend: (s: string, m: string) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const smsText = selected ? smsMesaji(selected, order, haliTurleri) : "";
@@ -592,7 +648,7 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
           overflowY: "auto",
           boxShadow: "0 25px 60px rgba(0,0,0,0.2)",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: any) => e.stopPropagation()}
       >
         <div
           style={{
@@ -619,7 +675,6 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
             ✕
           </button>
         </div>
-
         <div
           style={{
             background: "#F8FAFC",
@@ -632,7 +687,6 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
         >
           <strong>{order.musteri}</strong> · {order.telefon} · {order.id}
         </div>
-
         <div style={{ display: "grid", gap: 6, marginBottom: 16 }}>
           {Object.keys(STATUS_CONFIG)
             .filter((s) => s !== "bekliyor")
@@ -658,7 +712,7 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
                       : "#fff",
                     cursor: zatenGitti ? "not-allowed" : "pointer",
                     opacity: zatenGitti ? 0.55 : 1,
-                    textAlign: "left",
+                    textAlign: "left" as any,
                     fontFamily: "inherit",
                   }}
                 >
@@ -686,7 +740,6 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
               );
             })}
         </div>
-
         {smsText && (
           <div
             style={{
@@ -703,7 +756,6 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
                 fontWeight: 700,
                 color: "#166534",
                 marginBottom: 6,
-                letterSpacing: "0.05em",
               }}
             >
               MESAJ ÖNİZLEME
@@ -713,7 +765,7 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
                 fontSize: 13,
                 color: "#15803D",
                 lineHeight: 1.7,
-                whiteSpace: "pre-line",
+                whiteSpace: "pre-line" as any,
               }}
             >
               {smsText}
@@ -723,7 +775,6 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
             </div>
           </div>
         )}
-
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button
             onClick={onClose}
@@ -769,13 +820,23 @@ function SmsModal({ order, haliTurleri, onClose, onSend }) {
 }
 
 // ─── SİPARİŞ FORMU ───────────────────────────────────────────────────────────
-function OrderModal({ order, haliTurleri, onClose, onSave }) {
-  const emptyKalem = () => ({
+function OrderModal({
+  order,
+  haliTurleri,
+  onClose,
+  onSave,
+}: {
+  order: Siparis | null;
+  haliTurleri: HaliTuru[];
+  onClose: () => void;
+  onSave: (f: any) => Promise<void>;
+}) {
+  const emptyKalem = (): HaliKalemi => ({
     turId: haliTurleri[0]?.id || "klasik",
     adet: 1,
     m2: 0,
   });
-  const [form, setForm] = useState(
+  const [form, setForm] = useState<any>(
     order
       ? {
           musteri: order.musteri,
@@ -799,7 +860,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const fiyat = hesaplaFiyat(form.haliKalemleri, haliTurleri);
 
-  const updateKalem = (i, field, val) => {
+  const updateKalem = (i: number, field: string, val: any) => {
     const k = [...form.haliKalemleri];
     k[i] = {
       ...k[i],
@@ -809,14 +870,16 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
   };
 
   const handleSubmit = async () => {
-    if (!form.musteri || !form.telefon)
-      return alert("Müşteri adı ve telefon zorunludur.");
+    if (!form.musteri || !form.telefon) {
+      alert("Müşteri adı ve telefon zorunludur.");
+      return;
+    }
     setSaving(true);
     await onSave({ ...form, fiyat });
     setSaving(false);
   };
 
-  const inp = {
+  const inp: any = {
     width: "100%",
     padding: "9px 12px",
     borderRadius: 10,
@@ -827,7 +890,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
     fontFamily: "inherit",
     background: "#FAFAFA",
   };
-  const lbl = {
+  const lbl: any = {
     fontSize: 10,
     fontWeight: 700,
     color: "#6B7280",
@@ -862,7 +925,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
           overflowY: "auto",
           boxShadow: "0 25px 60px rgba(0,0,0,0.2)",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: any) => e.stopPropagation()}
       >
         <h2
           style={{
@@ -874,7 +937,6 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
         >
           {order ? "✏️ Siparişi Düzenle" : "➕ Yeni Sipariş"}
         </h2>
-
         <div style={{ display: "grid", gap: 12, marginBottom: 20 }}>
           <div
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
@@ -884,7 +946,9 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
               <input
                 style={inp}
                 value={form.musteri}
-                onChange={(e) => setForm({ ...form, musteri: e.target.value })}
+                onChange={(e: any) =>
+                  setForm({ ...form, musteri: e.target.value })
+                }
                 placeholder="Ad Soyad"
               />
             </div>
@@ -893,7 +957,9 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
               <input
                 style={inp}
                 value={form.telefon}
-                onChange={(e) => setForm({ ...form, telefon: e.target.value })}
+                onChange={(e: any) =>
+                  setForm({ ...form, telefon: e.target.value })
+                }
                 placeholder="0532 xxx xx xx"
               />
             </div>
@@ -903,13 +969,11 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
             <input
               style={inp}
               value={form.adres}
-              onChange={(e) => setForm({ ...form, adres: e.target.value })}
+              onChange={(e: any) => setForm({ ...form, adres: e.target.value })}
               placeholder="Mahalle, İlçe, Şehir"
             />
           </div>
         </div>
-
-        {/* Halı kalemleri */}
         <div
           style={{
             background: "#F8FAFC",
@@ -932,7 +996,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
                 fontSize: 11,
                 fontWeight: 700,
                 color: "#374151",
-                textTransform: "uppercase",
+                textTransform: "uppercase" as any,
                 letterSpacing: "0.05em",
               }}
             >
@@ -975,14 +1039,14 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
                   fontSize: 10,
                   fontWeight: 700,
                   color: "#9CA3AF",
-                  textTransform: "uppercase",
+                  textTransform: "uppercase" as any,
                 }}
               >
                 {h}
               </div>
             ))}
           </div>
-          {form.haliKalemleri.map((k, i) => {
+          {form.haliKalemleri.map((k: HaliKalemi, i: number) => {
             const tur = haliTurleri.find((t) => t.id === k.turId);
             const sf = tur ? tur.birimFiyat * k.m2 : 0;
             return (
@@ -999,7 +1063,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
                 <select
                   style={{ ...inp, padding: "7px 10px" }}
                   value={k.turId}
-                  onChange={(e) => updateKalem(i, "turId", e.target.value)}
+                  onChange={(e: any) => updateKalem(i, "turId", e.target.value)}
                 >
                   {haliTurleri.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -1012,7 +1076,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
                   type="number"
                   min={1}
                   value={k.adet}
-                  onChange={(e) => updateKalem(i, "adet", e.target.value)}
+                  onChange={(e: any) => updateKalem(i, "adet", e.target.value)}
                 />
                 <input
                   style={{ ...inp, textAlign: "center", padding: "7px 6px" }}
@@ -1020,14 +1084,14 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
                   min={0}
                   step={0.5}
                   value={k.m2}
-                  onChange={(e) => updateKalem(i, "m2", e.target.value)}
+                  onChange={(e: any) => updateKalem(i, "m2", e.target.value)}
                 />
                 <div
                   style={{
                     fontWeight: 700,
                     fontSize: 13,
                     color: sf > 0 ? "#059669" : "#CBD5E1",
-                    textAlign: "right",
+                    textAlign: "right" as any,
                   }}
                 >
                   {sf > 0 ? `₺${sf}` : "—"}
@@ -1038,7 +1102,7 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
                     setForm({
                       ...form,
                       haliKalemleri: form.haliKalemleri.filter(
-                        (_, idx) => idx !== i
+                        (_: any, idx: number) => idx !== i
                       ),
                     });
                   }}
@@ -1077,14 +1141,13 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
             </span>
           </div>
         </div>
-
         <div style={{ display: "grid", gap: 12 }}>
           <div>
             <label style={lbl}>Durum</label>
             <select
               style={inp}
               value={form.durum}
-              onChange={(e) => setForm({ ...form, durum: e.target.value })}
+              onChange={(e: any) => setForm({ ...form, durum: e.target.value })}
             >
               {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -1096,14 +1159,15 @@ function OrderModal({ order, haliTurleri, onClose, onSave }) {
           <div>
             <label style={lbl}>Notlar</label>
             <textarea
-              style={{ ...inp, minHeight: 72, resize: "vertical" }}
+              style={{ ...inp, minHeight: 72, resize: "vertical" as any }}
               value={form.notlar}
-              onChange={(e) => setForm({ ...form, notlar: e.target.value })}
+              onChange={(e: any) =>
+                setForm({ ...form, notlar: e.target.value })
+              }
               placeholder="Özel istekler..."
             />
           </div>
         </div>
-
         <div
           style={{
             display: "flex",
@@ -1161,6 +1225,13 @@ function DetailPanel({
   onStatusChange,
   onEdit,
   onSmsOpen,
+}: {
+  order: Siparis | null;
+  haliTurleri: HaliTuru[];
+  onClose: () => void;
+  onStatusChange: (id: string, s: string) => void;
+  onEdit: (o: Siparis) => void;
+  onSmsOpen: (o: Siparis) => void;
 }) {
   if (!order) return null;
   const statusKeys = Object.keys(STATUS_CONFIG);
@@ -1190,14 +1261,7 @@ function DetailPanel({
         }}
       >
         <div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "#9CA3AF",
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-            }}
-          >
+          <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 700 }}>
             {order.id}
           </div>
           <h2
@@ -1227,8 +1291,6 @@ function DetailPanel({
           ✕
         </button>
       </div>
-
-      {/* Timeline */}
       <div style={{ padding: "20px 24px 0" }}>
         <div
           style={{
@@ -1236,7 +1298,6 @@ function DetailPanel({
             fontWeight: 700,
             color: "#6B7280",
             marginBottom: 10,
-            letterSpacing: "0.05em",
           }}
         >
           SİPARİŞ SÜRECİ
@@ -1323,8 +1384,6 @@ function DetailPanel({
           );
         })}
       </div>
-
-      {/* Halı kalemleri */}
       <div style={{ padding: "16px 24px 0" }}>
         <div
           style={{
@@ -1332,7 +1391,6 @@ function DetailPanel({
             fontWeight: 700,
             color: "#6B7280",
             marginBottom: 10,
-            letterSpacing: "0.05em",
           }}
         >
           HALI KALEMLERİ
@@ -1388,8 +1446,6 @@ function DetailPanel({
           </span>
         </div>
       </div>
-
-      {/* Bilgiler */}
       <div style={{ padding: "16px 24px 0" }}>
         <div
           style={{
@@ -1397,7 +1453,6 @@ function DetailPanel({
             fontWeight: 700,
             color: "#6B7280",
             marginBottom: 8,
-            letterSpacing: "0.05em",
           }}
         >
           BİLGİLER
@@ -1424,7 +1479,7 @@ function DetailPanel({
                 fontSize: 13,
                 fontWeight: 600,
                 color: "#111",
-                textAlign: "right",
+                textAlign: "right" as any,
                 maxWidth: "60%",
               }}
             >
@@ -1456,8 +1511,6 @@ function DetailPanel({
           </div>
         )}
       </div>
-
-      {/* Aksiyonlar */}
       <div style={{ padding: "20px 24px 24px" }}>
         <button
           onClick={() => onSmsOpen(order)}
@@ -1567,32 +1620,33 @@ function DetailPanel({
 
 // ─── ANA UYGULAMA ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Siparis[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dbError, setDbError] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Siparis | null>(null);
   const [filterStatus, setFilterStatus] = useState("Tümü");
   const [search, setSearch] = useState("");
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [editingOrder, setEditingOrder] = useState(null);
-  const [smsOrder, setSmsOrder] = useState(null);
+  const [editingOrder, setEditingOrder] = useState<Siparis | null>(null);
+  const [smsOrder, setSmsOrder] = useState<Siparis | null>(null);
   const [activeTab, setActiveTab] = useState("siparisler");
   const [showHaliYonetim, setShowHaliYonetim] = useState(false);
-  const [toast, setToast] = useState({ msg: null, type: "success" });
-  const [haliTurleri, setHaliTurleri] = useState(() => {
+  const [toast, setToast] = useState<ToastState>({
+    msg: null,
+    type: "success",
+  });
+  const [haliTurleri, setHaliTurleri] = useState<HaliTuru[]>(() => {
     try {
-      return (
-        JSON.parse(localStorage.getItem("temiz360_hali_turleri")) ||
-        VARSAYILAN_HALI_TURLERI
-      );
+      const s = localStorage.getItem("temiz360_hali_turleri");
+      return s ? JSON.parse(s) : VARSAYILAN_HALI_TURLERI;
     } catch {
       return VARSAYILAN_HALI_TURLERI;
     }
   });
 
-  const showToast = (msg, type = "success") => {
+  const showToast = (msg: string, type: string = "success") => {
     setToast({ msg, type });
-    setTimeout(() => setToast({ msg: null }), 3000);
+    setTimeout(() => setToast({ msg: null, type: "success" }), 3000);
   };
 
   const siparisleriYukle = useCallback(async () => {
@@ -1600,7 +1654,7 @@ export default function App() {
       setLoading(true);
       setDbError(null);
       setOrders(await dbSiparisleriGetir());
-    } catch (e) {
+    } catch (e: any) {
       setDbError("Bağlantı hatası: " + e.message);
     } finally {
       setLoading(false);
@@ -1632,21 +1686,21 @@ export default function App() {
       .reduce((s, o) => s + (o.fiyat || 0), 0),
   };
 
-  const handleSave = async (form) => {
+  const handleSave = async (form: any) => {
     try {
-      await dbSiparisKaydet(form, editingOrder?.id);
+      await dbSiparisKaydet(form, editingOrder?.id || null, haliTurleri);
       showToast(
         editingOrder ? "Sipariş güncellendi" : "Yeni sipariş oluşturuldu"
       );
       await siparisleriYukle();
       setShowOrderModal(false);
       setEditingOrder(null);
-    } catch (e) {
+    } catch (e: any) {
       showToast("Hata: " + e.message, "error");
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
+  const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await dbDurumGuncelle(id, newStatus);
       setOrders((prev) =>
@@ -1658,14 +1712,16 @@ export default function App() {
       showToast(
         `${STATUS_CONFIG[newStatus].icon} ${STATUS_CONFIG[newStatus].label}`
       );
-    } catch (e) {
+    } catch (e: any) {
       showToast("Durum güncellenemedi", "error");
     }
   };
 
-  const handleSmsSend = async (statusKey, mesaj) => {
+  const handleSmsSend = async (statusKey: string, mesaj: string) => {
+    if (!smsOrder) return;
     try {
       const order = orders.find((o) => o.id === smsOrder.id);
+      if (!order) return;
       const yeniSmsDurum = { ...order.smsDurum, [statusKey]: true };
       await dbSmsGuncelle(smsOrder.id, yeniSmsDurum);
       await dbSmsLog(smsOrder.id, smsOrder.telefon, mesaj, statusKey);
@@ -1678,12 +1734,12 @@ export default function App() {
         prev?.id === smsOrder.id ? { ...prev, smsDurum: yeniSmsDurum } : prev
       );
       showToast("SMS logu kaydedildi ✓");
-    } catch (e) {
+    } catch (e: any) {
       showToast("SMS kaydedilemedi", "error");
     }
   };
 
-  const handleHaliKaydet = (liste) => {
+  const handleHaliKaydet = (liste: HaliTuru[]) => {
     setHaliTurleri(liste);
     try {
       localStorage.setItem("temiz360_hali_turleri", JSON.stringify(liste));
@@ -1692,7 +1748,7 @@ export default function App() {
     showToast("Halı türleri güncellendi");
   };
 
-  const tabStyle = (key) => ({
+  const tabStyle = (key: string): any => ({
     padding: "8px 18px",
     borderRadius: 10,
     border: "none",
@@ -1719,7 +1775,7 @@ export default function App() {
       />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <div
         style={{
           background: "linear-gradient(135deg,#0F172A 0%,#0F3460 100%)",
@@ -1763,7 +1819,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
         <div
           style={{
             background: "rgba(255,255,255,0.08)",
@@ -1785,7 +1840,6 @@ export default function App() {
             🏷️ Fiyat Listesi
           </button>
         </div>
-
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={siparisleriYukle}
@@ -1839,7 +1893,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Hata */}
       {dbError && (
         <div
           style={{
@@ -1873,7 +1926,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── FİYAT LİSTESİ ── */}
+      {/* FİYAT LİSTESİ */}
       {activeTab === "fiyatlar" && (
         <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
           <div
@@ -1974,7 +2027,7 @@ export default function App() {
                     background: "linear-gradient(135deg,#EFF6FF,#DBEAFE)",
                     borderRadius: 12,
                     padding: "8px 18px",
-                    textAlign: "center",
+                    textAlign: "center" as any,
                     border: "1px solid #BFDBFE",
                     minWidth: 72,
                   }}
@@ -1993,32 +2046,12 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div
-            style={{
-              marginTop: 20,
-              padding: "14px 18px",
-              background: "#FFF7ED",
-              borderRadius: 14,
-              border: "1px solid #FED7AA",
-              fontSize: 13,
-              color: "#9A3412",
-            }}
-          >
-            💡 Örnek: 12 m² Yün halı → 12 × ₺
-            {haliTurleri.find((t) => t.id === "yun")?.birimFiyat || 45} ={" "}
-            <strong>
-              ₺
-              {12 * (haliTurleri.find((t) => t.id === "yun")?.birimFiyat || 45)}
-            </strong>{" "}
-            · Fiyatları düzenlemek için "Düzenle" butonunu kullanın.
-          </div>
         </div>
       )}
 
-      {/* ── SİPARİŞLER ── */}
+      {/* SİPARİŞLER */}
       {activeTab === "siparisler" && (
         <div style={{ padding: 24, maxWidth: 1300, margin: "0 auto" }}>
-          {/* Stats */}
           <div
             style={{
               display: "grid",
@@ -2112,7 +2145,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Filtre */}
           <div
             style={{
               background: "#fff",
@@ -2122,13 +2154,13 @@ export default function App() {
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
               display: "flex",
               gap: 10,
-              flexWrap: "wrap",
+              flexWrap: "wrap" as any,
               alignItems: "center",
             }}
           >
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               placeholder="🔍 Müşteri, telefon veya sipariş no..."
               style={{
                 flex: 1,
@@ -2142,7 +2174,7 @@ export default function App() {
                 background: "#F8FAFC",
               }}
             />
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" as any }}>
               {STATUSLAR.map((s) => {
                 const cfg = s !== "Tümü" ? STATUS_CONFIG[s] : null;
                 const active = filterStatus === s;
@@ -2170,7 +2202,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Tablo */}
           <div
             style={{
               background: "#fff",
@@ -2180,7 +2211,7 @@ export default function App() {
             }}
           >
             {loading ? (
-              <div style={{ padding: 60, textAlign: "center" }}>
+              <div style={{ padding: 60, textAlign: "center" as any }}>
                 <div
                   style={{
                     width: 36,
@@ -2198,7 +2229,9 @@ export default function App() {
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table
+                  style={{ width: "100%", borderCollapse: "collapse" as any }}
+                >
                   <thead>
                     <tr
                       style={{
@@ -2220,13 +2253,13 @@ export default function App() {
                           key={h}
                           style={{
                             padding: "11px 14px",
-                            textAlign: "left",
+                            textAlign: "left" as any,
                             fontSize: 10,
                             fontWeight: 700,
                             color: "#64748B",
                             letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            whiteSpace: "nowrap",
+                            textTransform: "uppercase" as any,
+                            whiteSpace: "nowrap" as any,
                           }}
                         >
                           {h}
@@ -2241,7 +2274,7 @@ export default function App() {
                           colSpan={8}
                           style={{
                             padding: 50,
-                            textAlign: "center",
+                            textAlign: "center" as any,
                             color: "#9CA3AF",
                             fontSize: 14,
                           }}
@@ -2301,7 +2334,7 @@ export default function App() {
                               <div
                                 style={{
                                   display: "flex",
-                                  flexWrap: "wrap",
+                                  flexWrap: "wrap" as any,
                                   gap: 4,
                                 }}
                               >
@@ -2369,14 +2402,14 @@ export default function App() {
                                 padding: "12px 14px",
                                 color: "#9CA3AF",
                                 fontSize: 12,
-                                whiteSpace: "nowrap",
+                                whiteSpace: "nowrap" as any,
                               }}
                             >
                               {order.tarih}
                             </td>
                             <td style={{ padding: "12px 14px" }}>
                               <button
-                                onClick={(e) => {
+                                onClick={(e: any) => {
                                   e.stopPropagation();
                                   setEditingOrder(order);
                                   setShowOrderModal(true);
@@ -2420,22 +2453,19 @@ export default function App() {
         </div>
       )}
 
-      {/* Detay paneli */}
       {selectedOrder && (
         <DetailPanel
-          order={orders.find((o) => o.id === selectedOrder.id)}
+          order={orders.find((o) => o.id === selectedOrder.id) || null}
           haliTurleri={haliTurleri}
           onClose={() => setSelectedOrder(null)}
           onStatusChange={handleStatusChange}
-          onEdit={(order) => {
-            setEditingOrder(order);
+          onEdit={(o) => {
+            setEditingOrder(o);
             setShowOrderModal(true);
           }}
           onSmsOpen={setSmsOrder}
         />
       )}
-
-      {/* Sipariş formu */}
       {showOrderModal && (
         <OrderModal
           order={editingOrder}
@@ -2447,8 +2477,6 @@ export default function App() {
           onSave={handleSave}
         />
       )}
-
-      {/* SMS modali */}
       {smsOrder && (
         <SmsModal
           order={smsOrder}
@@ -2457,8 +2485,6 @@ export default function App() {
           onSend={handleSmsSend}
         />
       )}
-
-      {/* Halı yönetim modali */}
       {showHaliYonetim && (
         <HaliYonetimModal
           turler={haliTurleri}
@@ -2466,7 +2492,6 @@ export default function App() {
           onSave={handleHaliKaydet}
         />
       )}
-
       <Toast msg={toast.msg} type={toast.type} />
     </div>
   );
