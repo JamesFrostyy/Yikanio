@@ -571,7 +571,7 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
     outline: "none",
     boxSizing: "border-box",
     fontFamily: "'Poppins', sans-serif",
-    background: "rgba(255, 255, 255, 0.8)",
+    background: "rgba(255, 255, 255, 0.85)",
     color: "#0F172A",
     transition: "all 0.3s ease",
   };
@@ -589,8 +589,7 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
     <div
       style={{
         minHeight: "100vh",
-        // Arka plana temizlik temalı bir görsel ve formun okunabilirliği için koyu bir katman (overlay) ekledik
-        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.85)), url('https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=1920&auto=format&fit=crop')`,
+        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.92)), url('https://images.unsplash.com/photo-1587841551061-f3bdf01d0fbc?q=80&w=1920&auto=format&fit=crop')`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
@@ -598,12 +597,11 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
-        fontFamily: "'Poppins', sans-serif", // Yeni ve daha profesyonel yazı tipi
+        fontFamily: "'Poppins', sans-serif",
       }}
     >
-      {/* Poppins fontunu projeye dahil ediyoruz */}
       <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet"
       />
       <style>
@@ -630,7 +628,6 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
 
       <div
         style={{
-          // Cam efekti (Glassmorphism) arka plan
           background: "rgba(255, 255, 255, 0.95)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
@@ -642,60 +639,94 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: "36px" }}>
-          {/* Vektörel SVG Logo Tasarımı */}
+          {/* YENİ SAAS LOGOSU: İzometrik Katmanlar */}
           <div
             style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "18px",
-              background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)",
+              width: "72px",
+              height: "72px",
+              borderRadius: "20px",
+              background: "linear-gradient(135deg, #ffffff 0%, #F8FAFC 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               margin: "0 auto 20px",
-              boxShadow: "0 8px 16px rgba(59, 130, 246, 0.15)",
+              boxShadow:
+                "0 10px 25px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255,255,255,1)",
+              border: "1px solid #E2E8F0",
             }}
           >
             <svg
-              width="36"
-              height="36"
-              viewBox="0 0 24 24"
+              width="44"
+              height="44"
+              viewBox="0 0 32 32"
               fill="none"
-              stroke="url(#blue-grad)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              xmlns="http://www.w3.org/2000/svg"
             >
               <defs>
                 <linearGradient
-                  id="blue-grad"
+                  id="layer-grad"
                   x1="0%"
                   y1="0%"
                   x2="100%"
                   y2="100%"
                 >
+                  <stop offset="0%" stopColor="#38BDF8" />
+                  <stop offset="100%" stopColor="#1E3A8A" />
+                </linearGradient>
+                <linearGradient
+                  id="layer-cyan"
+                  x1="0%"
+                  y1="100%"
+                  x2="100%"
+                  y2="0%"
+                >
                   <stop offset="0%" stopColor="#06B6D4" />
                   <stop offset="100%" stopColor="#2563EB" />
                 </linearGradient>
               </defs>
-              {/* Temizliği temsil eden su damlası ve parıltı efekti */}
-              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-              <path d="M16 2v4h-4" />
-              <circle cx="16" cy="6" r="1.5" fill="#06B6D4" stroke="none" />
-              <circle cx="8" cy="14" r="1.5" fill="#3B82F6" stroke="none" />
+
+              {/* En Üst Katman */}
+              <path
+                d="M16 4L28 10.5L16 17L4 10.5L16 4Z"
+                fill="url(#layer-cyan)"
+                fillOpacity="0.15"
+                stroke="url(#layer-cyan)"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+              />
+              {/* Orta Katman */}
+              <path
+                d="M4 16L16 22.5L28 16"
+                stroke="url(#layer-grad)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {/* Alt Katman */}
+              <path
+                d="M4 21.5L16 28L28 21.5"
+                stroke="#94A3B8"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Merkez Noktası / Analiz İkonu */}
+              <circle cx="16" cy="10.5" r="3" fill="url(#layer-cyan)" />
             </svg>
           </div>
 
           <h1
             style={{
               margin: "0 0 8px",
-              fontSize: "26px",
-              fontWeight: 800,
+              fontSize: "28px",
+              fontWeight: 900,
               color: "#0F172A",
               letterSpacing: "-0.5px",
             }}
           >
-            Temiz360
+            HalıPro{" "}
+            <span style={{ color: "#3B82F6", fontSize: "28px" }}>.</span>
           </h1>
           <p
             style={{
@@ -705,13 +736,13 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
               fontWeight: 500,
             }}
           >
-            Halı Yıkama Yönetim Sistemi
+            Tesis Yönetim Paneli
           </p>
         </div>
 
         <div style={{ display: "grid", gap: "20px", marginBottom: "28px" }}>
           <div>
-            <label style={labelStyle}>Email Adresi</label>
+            <label style={labelStyle}>Kullanıcı Adı veya Email</label>
             <input
               className="modern-input"
               style={inp}
@@ -723,7 +754,16 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
             />
           </div>
           <div>
-            <label style={labelStyle}>Şifre</label>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "8px",
+              }}
+            >
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Şifre</label>
+            </div>
             <input
               className="modern-input"
               style={inp}
@@ -767,7 +807,7 @@ function LoginScreen({ onLogin }: { onLogin: (u: AuthUser) => void }) {
             border: "none",
             background: loading
               ? "#93C5FD"
-              : "linear-gradient(to right, #2563EB 0%, #06B6D4 51%, #2563EB 100%)",
+              : "linear-gradient(to right, #1E40AF 0%, #3B82F6 51%, #1E40AF 100%)",
             color: "#fff",
             cursor: loading ? "not-allowed" : "pointer",
             fontWeight: 700,
