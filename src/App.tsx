@@ -173,10 +173,13 @@ function smsMesaji(durum: string, order: Siparis, ht: HaliTuru[]): string {
 
 const hesaplaFiyat = (k: HaliKalemi[], t: HaliTuru[]) =>
   k.reduce(
-    (s, x) => s + (t.find((r) => r.id === x.turId)?.birimFiyat || 0) * x.m2 * (x.adet || 1),
+    (s, x) =>
+      s +
+      (t.find((r) => r.id === x.turId)?.birimFiyat || 0) * x.m2 * (x.adet || 1),
     0
   );
-const toplamM2 = (k: HaliKalemi[]) => k.reduce((s, x) => s + (x.m2 || 0) * (x.adet || 1), 0);
+const toplamM2 = (k: HaliKalemi[]) =>
+  k.reduce((s, x) => s + (x.m2 || 0) * (x.adet || 1), 0);
 const toplamAdet = (k: HaliKalemi[]) =>
   k.reduce((s, x) => s + (x.adet || 0), 0);
 // ─── DB ──────────────────────────────────────────────────────────────────────
@@ -284,7 +287,10 @@ async function dbKaydet(
             tur_id: k.turId,
             adet: k.adet,
             m2: k.m2,
-            tutar: (ht.find((t) => t.id === k.turId)?.birimFiyat || 0) * k.m2* k.adet,
+            tutar:
+              (ht.find((t) => t.id === k.turId)?.birimFiyat || 0) *
+              k.m2 *
+              k.adet,
           }))
         ),
       },
@@ -837,19 +843,38 @@ function FirmaModal({
     }
     setSaving(true);
     setErr("");
+
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      // Supabase Invite API'sine İstek Atıyoruz
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
         method: "POST",
         headers: {
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, email_confirm: false, invite: true }),
+        body: JSON.stringify({ email }),
       });
+
+      // Eğer istek başarısız olursa hatayı yakalayıp ekrana basalım
       if (!res.ok) {
-        // Kullanıcı zaten varsa sadece firmalar tablosuna ekle
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Supabase Davet Hatası:", errorData);
+
+        // "Kullanıcı zaten kayıtlı" hatası dışındaki tüm hatalarda işlemi durdur
+        if (
+          errorData.code !== "user_already_exists" &&
+          errorData.msg !== "User already registered"
+        ) {
+          throw new Error(
+            `Mail Gönderilemedi: ${
+              errorData.message || errorData.msg || "Bilinmeyen Yetki Hatası"
+            }`
+          );
+        }
       }
+
+      // Mail başarıyla gittiyse veya kullanıcı zaten varsa DB'ye ekle
       await dbFirmaEkle(token, ad, email);
       setAd("");
       setEmail("");
@@ -857,7 +882,7 @@ function FirmaModal({
       setFirmalar(liste);
       onSaved();
     } catch (e: any) {
-      setErr(e.message);
+      setErr(e.message); // Hatayı kırmızı kutu içinde ekrana yazdırır
     } finally {
       setSaving(false);
     }
@@ -1804,7 +1829,7 @@ function DetailSheet({
                   <span
                     style={{ fontWeight: 800, color: "#059669", fontSize: 15 }}
                   >
-                    ₺{tur ? tur.birimFiyat * k.m2 * k.adet: 0}
+                    ₺{tur ? tur.birimFiyat * k.m2 * k.adet : 0}
                   </span>
                 </div>
               </div>
@@ -2207,7 +2232,7 @@ function OrderModal({
           </div>
           {form.haliKalemleri.map((k: HaliKalemi, i: number) => {
             const tur = ht.find((t) => t.id === k.turId);
-            const sf = tur ? tur.birimFiyat * k.m2 * k.adet: 0;
+            const sf = tur ? tur.birimFiyat * k.m2 * k.adet : 0;
             return (
               <div
                 key={i}
