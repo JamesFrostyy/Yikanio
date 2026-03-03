@@ -855,9 +855,8 @@ function FirmaModal({
         },
         body: JSON.stringify({ email, password: tempPassword }),
       });
-      // Not: Kullanıcı zaten varsa Supabase hata dönse bile, şifre sıfırlama adımıyla devam edeceğiz.
 
-      // 2. ADIM: Firmaya "Şifre Sıfırlama" linki gönder (Davetiye maili olarak bu gidecek)
+      // 2. ADIM: Firmaya "Şifre Sıfırlama" linki gönder (Davetiye maili)
       const recoverRes = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
         method: "POST",
         headers: {
@@ -869,20 +868,29 @@ function FirmaModal({
 
       if (!recoverRes.ok) {
         const errData = await recoverRes.json();
-        throw new Error(
-          `Mail sunucusu reddetti: ${errData.msg || errData.message}`
-        );
+        throw new Error(`Mail reddedildi: ${errData.msg || errData.message}`);
       }
 
       // 3. ADIM: Firmayı kendi veritabanı tablomuza (firmalar) ekle
       await dbFirmaEkle(token, ad, email);
+
+      // Başarılı olursa formu temizle ve listeyi yenile
       setAd("");
       setEmail("");
       const liste = await dbFirmalariGetir(token);
       setFirmalar(liste);
       onSaved();
     } catch (e: any) {
-      setErr(e.message);
+      // PostgreSQL "Duplicate Key" hatasını yakalayıp Türkçeleştiriyoruz
+      if (
+        e.message.includes("23505") ||
+        e.message.includes("duplicate key") ||
+        e.message.includes("firmalar_email_key")
+      ) {
+        setErr("Bu e-posta adresiyle zaten bir firma kayıtlı!");
+      } else {
+        setErr(e.message);
+      }
     } finally {
       setSaving(false);
     }
