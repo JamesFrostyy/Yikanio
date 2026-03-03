@@ -1003,7 +1003,9 @@ export default function App() {
       setLoading(true); setErr(null);
       const [ss, ff] = await Promise.all([
         dbGetir(user.token, isAdmin),
-        isAdmin ? dbFirmalariGetir(user.token) : sbFetch(`firmalar?email=ilike.${encodeURIComponent(user.email)}&select=*`, {}, user.token).catch(() => []),
+        isAdmin
+          ? dbFirmalariGetir(user.token)
+          : sbFetch(`firmalar?email=eq.${user.email}`, {}, user.token),
       ]);
       setOrders(ss); setFirmalar(ff || []);
     } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
@@ -1034,7 +1036,7 @@ export default function App() {
 
   const handleSave = async (form: any) => {
     try {
-      const firmaId = isAdmin ? form.firmaId : firmalar.find((f) => f.email === user?.email)?.id;
+                        const firmaId = isAdmin ? form.firmaId : firmalar[0]?.id;
       await dbKaydet(form, editing?.id || null, ht, user!.token, firmaId);
       showToast(editing ? "Sipariş güncellendi" : "Sipariş oluşturuldu");
       await yukle(); setShowOrder(false); setEditing(null);
@@ -1107,6 +1109,7 @@ export default function App() {
           .header-tabs { display: none !important; }
           .bottom-nav { display: flex !important; }
           .hide-on-mobile { display: none !important; } /* GİZLEME SINIFI EKLENDİ */
+          .company-name { max-width: 130px !important; font-size: 12px !important; }
         }
       `}</style>
 
@@ -1125,8 +1128,8 @@ export default function App() {
           </div>
           <div>
             <div style={{ color: "#fff", fontWeight: 800, fontSize: "18px", lineHeight: 1, letterSpacing: "-0.5px" }}>HalıPro <span style={{ color: "#3B82F6" }}>.</span></div>
-            <div style={{ color: "#475569", fontSize: 10 }}>
-              {isAdmin ? "👑 Yönetici Paneli" : (firmalar.length > 0 ? `🏢 ${firmalar[0].ad}` : user?.email)}
+            <div className="company-name" style={{ color: "#E2E8F0", fontSize: "14px", fontWeight: 700, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "300px" }}>
+              {isAdmin ? "👑 Yönetici Paneli" : (firmalar.length > 0 ? firmalar[0].ad : "Temiz360")}
             </div>
           </div>
         </div>
@@ -1139,8 +1142,8 @@ export default function App() {
 
         <div style={{ display: "flex", gap: "6px" }}>
           {isAdmin && <button onClick={() => setShowFirma(true)} style={{ background: "rgba(255,255,255,0.08)", color: "#fff", border: "none", borderRadius: "10px", padding: "0 10px", height: "38px", cursor: "pointer", fontSize: "14px" }}>🏢</button>}
-          <button onClick={yukle} style={{ background: "rgba(255,255,255,0.08)", color: "#fff", border: "none", borderRadius: "10px", width: "38px", height: "38px", cursor: "pointer", fontSize: "16px" }}>⟳</button>
-          <button onClick={handleLogout} style={{ background: "transparent", color: "#94A3B8", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "0 12px", height: "38px", cursor: "pointer", fontSize: "13px", fontWeight: 500, fontFamily: "inherit" }}>Çıkış</button>
+          <button onClick={yukle} style={{ background: "#334155", color: "#fff", border: "1px solid #475569", borderRadius: "10px", width: "38px", height: "38px", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>⟳</button>
+          <button onClick={handleLogout} style={{ background: "#334155", color: "#fff", border: "1px solid #475569", borderRadius: "10px", padding: "0 16px", height: "38px", cursor: "pointer", fontSize: "13px", fontWeight: 600, fontFamily: "inherit" }}>Çıkış</button>
           <button onClick={() => { setEditing(null); setShowOrder(true); }} className="hide-on-mobile" style={{ background: "linear-gradient(135deg,#3B82F6,#2563EB)", color: "#fff", border: "none", borderRadius: "10px", padding: "0 16px", height: "38px", cursor: "pointer", fontWeight: 700, fontSize: "13px", fontFamily: "inherit", boxShadow: "0 4px 10px rgba(37, 99, 235, 0.3)" }}>+ Yeni Sipariş</button>
         </div>
       </div>
