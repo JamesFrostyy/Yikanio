@@ -173,13 +173,12 @@ function smsMesaji(durum: string, order: Siparis, ht: HaliTuru[]): string {
 
 const hesaplaFiyat = (k: HaliKalemi[], t: HaliTuru[]) =>
   k.reduce(
-    (s, x) => s + (t.find((r) => r.id === x.turId)?.birimFiyat || 0) * x.m2,
+    (s, x) => s + (t.find((r) => r.id === x.turId)?.birimFiyat || 0) * x.m2 * (x.adet || 1),
     0
   );
-const toplamM2 = (k: HaliKalemi[]) => k.reduce((s, x) => s + (x.m2 || 0), 0);
+const toplamM2 = (k: HaliKalemi[]) => k.reduce((s, x) => s + (x.m2 || 0) * (x.adet || 1), 0);
 const toplamAdet = (k: HaliKalemi[]) =>
   k.reduce((s, x) => s + (x.adet || 0), 0);
-
 // ─── DB ──────────────────────────────────────────────────────────────────────
 async function dbGetir(token: string, isAdmin: boolean): Promise<Siparis[]> {
   const query = isAdmin
@@ -285,7 +284,7 @@ async function dbKaydet(
             tur_id: k.turId,
             adet: k.adet,
             m2: k.m2,
-            tutar: (ht.find((t) => t.id === k.turId)?.birimFiyat || 0) * k.m2,
+            tutar: (ht.find((t) => t.id === k.turId)?.birimFiyat || 0) * k.m2* k.adet,
           }))
         ),
       },
@@ -1805,7 +1804,7 @@ function DetailSheet({
                   <span
                     style={{ fontWeight: 800, color: "#059669", fontSize: 15 }}
                   >
-                    ₺{tur ? tur.birimFiyat * k.m2 : 0}
+                    ₺{tur ? tur.birimFiyat * k.m2 * k.adet: 0}
                   </span>
                 </div>
               </div>
@@ -2208,7 +2207,7 @@ function OrderModal({
           </div>
           {form.haliKalemleri.map((k: HaliKalemi, i: number) => {
             const tur = ht.find((t) => t.id === k.turId);
-            const sf = tur ? tur.birimFiyat * k.m2 : 0;
+            const sf = tur ? tur.birimFiyat * k.m2 * k.adet: 0;
             return (
               <div
                 key={i}
