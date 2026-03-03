@@ -2608,76 +2608,242 @@ function OrderModal({
 function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
   // Finansal Metrikler
   const toplamCiro = orders.reduce((s, o) => s + (o.fiyat || 0), 0);
-  const tamamlananCiro = orders.filter((o) => o.durum === "teslim_edildi").reduce((s, o) => s + (o.fiyat || 0), 0);
+  const tamamlananCiro = orders
+    .filter((o) => o.durum === "teslim_edildi")
+    .reduce((s, o) => s + (o.fiyat || 0), 0);
   const bekleyenCiro = toplamCiro - tamamlananCiro;
-  const ortalamaSiparis = orders.length > 0 ? Math.round(toplamCiro / orders.length) : 0;
+  const ortalamaSiparis =
+    orders.length > 0 ? Math.round(toplamCiro / orders.length) : 0;
 
-  // Hacim Metrikleri
-  const toplamM2 = orders.reduce((s, o) => s + toplamM2(o.haliKalemleri || []), 0);
-  const toplamAdet = orders.reduce((s, o) => s + toplamAdet(o.haliKalemleri || []), 0);
+  // Hacim Metrikleri (İsimleri çakışmaması için genelToplam olarak değiştirdik)
+  const genelToplamM2 = orders.reduce(
+    (s, o) => s + toplamM2(o.haliKalemleri || []),
+    0
+  );
+  const genelToplamAdet = orders.reduce(
+    (s, o) => s + toplamAdet(o.haliKalemleri || []),
+    0
+  );
 
   // Halı Türü Dağılımı
-  const turDagilimi = ht.map((t) => {
-    let m2 = 0;
-    orders.forEach((o) => {
-      (o.haliKalemleri || []).forEach((k) => {
-        if (k.turId === t.id) m2 += k.m2 * (k.adet || 1);
+  const turDagilimi = ht
+    .map((t) => {
+      let m2 = 0;
+      orders.forEach((o) => {
+        (o.haliKalemleri || []).forEach((k) => {
+          if (k.turId === t.id) m2 += k.m2 * (k.adet || 1);
+        });
       });
-    });
-    return { ...t, m2 };
-  }).filter((t) => t.m2 > 0).sort((a, b) => b.m2 - a.m2);
+      return { ...t, m2 };
+    })
+    .filter((t) => t.m2 > 0)
+    .sort((a, b) => b.m2 - a.m2);
 
   const maxTurM2 = turDagilimi.length > 0 ? turDagilimi[0].m2 : 1;
 
   return (
-    <div style={{ padding: "24px", paddingBottom: "100px", maxWidth: "1200px", margin: "0 auto", fontFamily: "'Poppins', sans-serif" }}>
+    <div
+      style={{
+        padding: "24px",
+        paddingBottom: "100px",
+        maxWidth: "1200px",
+        margin: "0 auto",
+        fontFamily: "'Poppins', sans-serif",
+      }}
+    >
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}>📊 İşletme Raporu</h2>
-        <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 14 }}>Tüm zamanların sipariş ve performans özetleri</p>
+        <h2
+          style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}
+        >
+          📊 İşletme Raporu
+        </h2>
+        <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 14 }}>
+          Tüm zamanların sipariş ve performans özetleri
+        </p>
       </div>
 
       {/* ÜST ÖZET KARTLARI */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 24 }}>
-        <div style={{ background: "linear-gradient(135deg, #1E40AF, #3B82F6)", borderRadius: 16, padding: 20, color: "#fff", boxShadow: "0 10px 15px -3px rgba(59, 130, 246, 0.3)" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#DBEAFE", marginBottom: 8, textTransform: "uppercase" as any }}>Toplam Ciro (Tümü)</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>₺{toplamCiro.toLocaleString()}</div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            background: "linear-gradient(135deg, #1E40AF, #3B82F6)",
+            borderRadius: 16,
+            padding: 20,
+            color: "#fff",
+            boxShadow: "0 10px 15px -3px rgba(59, 130, 246, 0.3)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#DBEAFE",
+              marginBottom: 8,
+              textTransform: "uppercase" as any,
+            }}
+          >
+            Toplam Ciro (Tümü)
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 800 }}>
+            ₺{toplamCiro.toLocaleString()}
+          </div>
         </div>
-        <div style={{ background: "#fff", borderRadius: 16, padding: 20, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase" as any }}>Tamamlanan (Kasadaki)</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#059669" }}>₺{tamamlananCiro.toLocaleString()}</div>
-          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>Bekleyen Alacak: ₺{bekleyenCiro.toLocaleString()}</div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: 20,
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#64748B",
+              marginBottom: 8,
+              textTransform: "uppercase" as any,
+            }}
+          >
+            Tamamlanan (Kasadaki)
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#059669" }}>
+            ₺{tamamlananCiro.toLocaleString()}
+          </div>
+          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>
+            Bekleyen Alacak: ₺{bekleyenCiro.toLocaleString()}
+          </div>
         </div>
-        <div style={{ background: "#fff", borderRadius: 16, padding: 20, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase" as any }}>Ortalama Sepet Tutarı</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A" }}>₺{ortalamaSiparis.toLocaleString()}</div>
-          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>Sipariş başına ortalama kazanç</div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: 20,
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#64748B",
+              marginBottom: 8,
+              textTransform: "uppercase" as any,
+            }}
+          >
+            Ortalama Sepet Tutarı
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A" }}>
+            ₺{ortalamaSiparis.toLocaleString()}
+          </div>
+          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>
+            Sipariş başına ortalama kazanç
+          </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20 }}>
-        
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+          gap: 20,
+        }}
+      >
         {/* HALI TÜRÜ ANALİZİ (BAR CHART) */}
-        <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-          <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#0F172A", display: "flex", justifyContent: "space-between" }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: 24,
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 20px",
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#0F172A",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
             <span>Yıkanan Halı Türleri</span>
-            <span style={{ fontSize: 13, color: "#3B82F6", background: "#EFF6FF", padding: "4px 10px", borderRadius: 12 }}>Toplam: {toplamM2} m²</span>
+            <span
+              style={{
+                fontSize: 13,
+                color: "#3B82F6",
+                background: "#EFF6FF",
+                padding: "4px 10px",
+                borderRadius: 12,
+              }}
+            >
+              Toplam: {genelToplamM2} m²
+            </span>
           </h3>
-          
+
           <div style={{ display: "grid", gap: 16 }}>
             {turDagilimi.length === 0 ? (
-              <div style={{ color: "#94A3B8", fontSize: 14 }}>Henüz veri yok.</div>
+              <div style={{ color: "#94A3B8", fontSize: 14 }}>
+                Henüz veri yok.
+              </div>
             ) : (
               turDagilimi.map((t) => {
                 const yuzde = Math.round((t.m2 / maxTurM2) * 100);
-                const gercekYuzde = Math.round((t.m2 / (toplamM2 || 1)) * 100);
+                const gercekYuzde = Math.round(
+                  (t.m2 / (genelToplamM2 || 1)) * 100
+                );
                 return (
                   <div key={t.id}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
-                      <span>{t.icon} {t.ad}</span>
-                      <span>{t.m2} m² <span style={{ color: "#94A3B8", fontWeight: 500 }}>({gercekYuzde}%)</span></span>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#334155",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span>
+                        {t.icon} {t.ad}
+                      </span>
+                      <span>
+                        {t.m2} m²{" "}
+                        <span style={{ color: "#94A3B8", fontWeight: 500 }}>
+                          ({gercekYuzde}%)
+                        </span>
+                      </span>
                     </div>
-                    <div style={{ width: "100%", height: 10, background: "#F1F5F9", borderRadius: 6, overflow: "hidden" }}>
-                      <div style={{ width: `${yuzde}%`, height: "100%", background: "linear-gradient(90deg, #3B82F6, #60A5FA)", borderRadius: 6, transition: "width 1s ease-out" }} />
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 10,
+                        background: "#F1F5F9",
+                        borderRadius: 6,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${yuzde}%`,
+                          height: "100%",
+                          background:
+                            "linear-gradient(90deg, #3B82F6, #60A5FA)",
+                          borderRadius: 6,
+                          transition: "width 1s ease-out",
+                        }}
+                      />
                     </div>
                   </div>
                 );
@@ -2687,10 +2853,37 @@ function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
         </div>
 
         {/* SİPARİŞ DURUM ANALİZİ */}
-        <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-          <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#0F172A", display: "flex", justifyContent: "space-between" }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: 24,
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 20px",
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#0F172A",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
             <span>Sipariş Durumları</span>
-            <span style={{ fontSize: 13, color: "#10B981", background: "#ECFDF5", padding: "4px 10px", borderRadius: 12 }}>{toplamAdet} Adet Halı</span>
+            <span
+              style={{
+                fontSize: 13,
+                color: "#10B981",
+                background: "#ECFDF5",
+                padding: "4px 10px",
+                borderRadius: 12,
+              }}
+            >
+              {genelToplamAdet} Adet Halı
+            </span>
           </h3>
 
           <div style={{ display: "grid", gap: 12 }}>
@@ -2698,29 +2891,90 @@ function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
               const cfg = STATUS_CONFIG[durumKodu];
               const adet = orders.filter((o) => o.durum === durumKodu).length;
               if (adet === 0) return null;
-              
+
               const yuzde = Math.round((adet / orders.length) * 100);
               return (
-                <div key={durumKodu} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", background: "#F8FAFC", borderRadius: 12, border: "1px solid #E2E8F0" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: cfg.bg, color: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                <div
+                  key={durumKodu}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px",
+                    background: "#F8FAFC",
+                    borderRadius: 12,
+                    border: "1px solid #E2E8F0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      background: cfg.bg,
+                      color: cfg.color,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 18,
+                    }}
+                  >
                     {cfg.icon}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{cfg.label}</div>
-                    <div style={{ width: "100%", height: 6, background: "#E2E8F0", borderRadius: 4, marginTop: 6, overflow: "hidden" }}>
-                      <div style={{ width: `${yuzde}%`, height: "100%", background: cfg.color }} />
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#0F172A",
+                      }}
+                    >
+                      {cfg.label}
+                    </div>
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 6,
+                        background: "#E2E8F0",
+                        borderRadius: 4,
+                        marginTop: 6,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${yuzde}%`,
+                          height: "100%",
+                          background: cfg.color,
+                        }}
+                      />
                     </div>
                   </div>
                   <div style={{ textAlign: "right", minWidth: 50 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>{adet}</div>
-                    <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>% {yuzde}</div>
+                    <div
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 800,
+                        color: "#0F172A",
+                      }}
+                    >
+                      {adet}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#64748B",
+                        fontWeight: 600,
+                      }}
+                    >
+                      % {yuzde}
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-
       </div>
     </div>
   );
