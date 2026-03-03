@@ -224,6 +224,33 @@ async function dbFirmaEkle(
     token
   );
 }
+async function dbFirmaGuncelle(
+  token: string,
+  id: string,
+  ad: string,
+  aktif: boolean
+): Promise<void> {
+  await sbFetch(
+    `firmalar?id=eq.${id}`,
+    {
+      method: "PATCH",
+      prefer: "return=minimal",
+      body: JSON.stringify({ ad, aktif }),
+    },
+    token
+  );
+}
+
+async function dbFirmaSil(token: string, id: string): Promise<void> {
+  await sbFetch(
+    `firmalar?id=eq.${id}`,
+    {
+      method: "DELETE",
+      prefer: "return=minimal",
+    },
+    token
+  );
+}
 
 async function dbKaydet(
   form: any,
@@ -825,18 +852,43 @@ function FirmaModal({
 }) {
   const [firmalar, setFirmalar] = useState<Firma[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Form State'leri
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [ad, setAd] = useState("");
   const [email, setEmail] = useState("");
+  const [aktif, setAktif] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
+  // Silme Onay State'i
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const yukle = async () => {
+    setLoading(true);
+    try {
+      const data = await dbFirmalariGetir(token);
+      setFirmalar(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    dbFirmalariGetir(token)
-      .then(setFirmalar)
-      .finally(() => setLoading(false));
+    yukle();
   }, [token]);
 
-  const ekle = async () => {
+  const formuTemizle = () => {
+    setIsEditing(false);
+    setEditId(null);
+    setAd("");
+    setEmail("");
+    setAktif(true);
+    setErr("");
+  };
+
+  const kaydet = async () => {
     if (!ad || !email) {
       setErr("Ad ve email gerekli");
       return;
@@ -845,46 +897,39 @@ function FirmaModal({
     setErr("");
 
     try {
-      // 1. ADIM: Firmayı arka planda rastgele, güçlü bir şifreyle sisteme kayıt et
-      const tempPassword = "T360." + Math.random().toString(36).slice(-8) + "!";
-      await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password: tempPassword }),
-      });
+      if (isEditing && editId) {
+        // GÜNCELLEME İŞLEMİ
+        await dbFirmaGuncelle(token, editId, ad, aktif);
+      } else {
+        // YENİ EKLEME İŞLEMİ (Şifre Sıfırlama Hilesiyle)
+        const tempPassword =
+          "T360." + Math.random().toString(36).slice(-8) + "!";
+        await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password: tempPassword }),
+        });
 
-      // 2. ADIM: Firmaya "Şifre Sıfırlama" linki gönder (Davetiye maili)
-      const recoverRes = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
+        const recoverRes = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
 
-      if (!recoverRes.ok) {
-        const errData = await recoverRes.json();
-        throw new Error(`Mail reddedildi: ${errData.msg || errData.message}`);
+        if (!recoverRes.ok) {
+          const errData = await recoverRes.json();
+          throw new Error(`Mail reddedildi: ${errData.msg || errData.message}`);
+        }
+
+        await dbFirmaEkle(token, ad, email);
       }
 
-      // 3. ADIM: Firmayı kendi veritabanı tablomuza (firmalar) ekle
-      await dbFirmaEkle(token, ad, email);
-
-      // Başarılı olursa formu temizle ve listeyi yenile
-      setAd("");
-      setEmail("");
-      const liste = await dbFirmalariGetir(token);
-      setFirmalar(liste);
+      formuTemizle();
+      await yukle();
       onSaved();
     } catch (e: any) {
-      // PostgreSQL "Duplicate Key" hatasını yakalayıp Türkçeleştiriyoruz
       if (
         e.message.includes("23505") ||
-        e.message.includes("duplicate key") ||
         e.message.includes("firmalar_email_key")
       ) {
         setErr("Bu e-posta adresiyle zaten bir firma kayıtlı!");
@@ -896,6 +941,27 @@ function FirmaModal({
     }
   };
 
+  const sil = async (id: string) => {
+    try {
+      await dbFirmaSil(token, id);
+      setDeleteConfirm(null);
+      await yukle();
+      onSaved();
+    } catch (e: any) {
+      setErr("Silme hatası: Olası bağlı siparişler olabilir. " + e.message);
+    }
+  };
+
+  const duzenleModunaGec = (f: Firma) => {
+    setIsEditing(true);
+    setEditId(f.id);
+    setAd(f.ad);
+    setEmail(f.email);
+    setAktif(f.aktif);
+    setErr("");
+    setDeleteConfirm(null);
+  };
+
   const inp: any = {
     width: "100%",
     padding: "12px",
@@ -904,7 +970,7 @@ function FirmaModal({
     fontSize: 14,
     outline: "none",
     boxSizing: "border-box",
-    fontFamily: "'Poppins', sans-serif",
+    fontFamily: "inherit",
     background: "#FAFAFA",
   };
 
@@ -913,20 +979,19 @@ function FirmaModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(15,23,42,0.65)",
+        background: "rgba(0,0,0,0.55)",
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center",
         zIndex: 2000,
-        fontFamily: "'Poppins', sans-serif",
       }}
       onClick={onClose}
     >
       <div
         style={{
           background: "#fff",
-          borderRadius: "24px 24px 0 0",
-          padding: "20px 20px 32px",
+          borderRadius: "20px 20px 0 0",
+          padding: "20px 16px 32px",
           width: "100%",
           maxWidth: 600,
           maxHeight: "85vh",
@@ -938,7 +1003,7 @@ function FirmaModal({
           style={{
             width: 40,
             height: 4,
-            background: "#E2E8F0",
+            background: "#E5E7EB",
             borderRadius: 4,
             margin: "0 auto 16px",
           }}
@@ -947,7 +1012,7 @@ function FirmaModal({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            marginBottom: 20,
+            marginBottom: 16,
           }}
         >
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
@@ -956,41 +1021,63 @@ function FirmaModal({
           <button
             onClick={onClose}
             style={{
-              background: "#F1F5F9",
+              background: "#F3F4F6",
               border: "none",
               borderRadius: 8,
               width: 32,
               height: 32,
               cursor: "pointer",
-              fontSize: 16,
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* Yeni firma ekle */}
+        {/* Ekleme / Düzenleme Formu */}
         <div
           style={{
-            background: "#F8FAFC",
+            background: isEditing ? "#EFF6FF" : "#F8FAFC",
             borderRadius: 12,
-            padding: 16,
-            border: "1.5px dashed #CBD5E1",
-            marginBottom: 20,
+            padding: 14,
+            border: `1.5px dashed ${isEditing ? "#93C5FD" : "#CBD5E1"}`,
+            marginBottom: 16,
           }}
         >
           <div
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#64748B",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
               marginBottom: 10,
-              textTransform: "uppercase" as any,
             }}
           >
-            Yeni Firma Ekle
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: isEditing ? "#1D4ED8" : "#6B7280",
+                textTransform: "uppercase" as any,
+              }}
+            >
+              {isEditing ? "✏️ Firmayı Düzenle" : "Yeni Firma Ekle"}
+            </div>
+            {isEditing && (
+              <button
+                onClick={formuTemizle}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#64748B",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                İptal Et
+              </button>
+            )}
           </div>
-          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "grid", gap: 8, marginBottom: 10 }}>
             <input
               style={inp}
               value={ad}
@@ -1002,23 +1089,36 @@ function FirmaModal({
               type="email"
               value={email}
               onChange={(e: any) => setEmail(e.target.value)}
+              disabled={isEditing}
               placeholder="Firma email adresi"
             />
+            {isEditing && (
+              <select
+                style={inp}
+                value={aktif ? "true" : "false"}
+                onChange={(e: any) => setAktif(e.target.value === "true")}
+              >
+                <option value="true">🟢 Hesap Aktif</option>
+                <option value="false">🔴 Hesap Pasif (Dondurulmuş)</option>
+              </select>
+            )}
           </div>
           {err && (
-            <div style={{ color: "#DC2626", fontSize: 13, marginBottom: 10 }}>
+            <div style={{ color: "#DC2626", fontSize: 12, marginBottom: 8 }}>
               ❌ {err}
             </div>
           )}
           <button
-            onClick={ekle}
+            onClick={kaydet}
             disabled={saving}
             style={{
               width: "100%",
               padding: "12px",
               borderRadius: 10,
               border: "none",
-              background: "linear-gradient(135deg,#2563EB,#3B82F6)",
+              background: isEditing
+                ? "linear-gradient(135deg,#059669,#10B981)"
+                : "linear-gradient(135deg,#1E40AF,#3B82F6)",
               color: "#fff",
               cursor: saving ? "not-allowed" : "pointer",
               fontWeight: 700,
@@ -1026,17 +1126,21 @@ function FirmaModal({
               fontFamily: "inherit",
             }}
           >
-            {saving ? "Ekleniyor..." : "+ Firma Ekle & Davet Gönder"}
+            {saving
+              ? "İşleniyor..."
+              : isEditing
+              ? "Değişiklikleri Kaydet"
+              : "+ Firma Ekle & Davet Gönder"}
           </button>
         </div>
 
-        {/* Firma listesi */}
+        {/* Firma Listesi */}
         <div
           style={{
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: 700,
-            color: "#64748B",
-            marginBottom: 10,
+            color: "#6B7280",
+            marginBottom: 8,
             textTransform: "uppercase" as any,
           }}
         >
@@ -1053,7 +1157,7 @@ function FirmaModal({
             Yükleniyor...
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 8 }}>
             {firmalar.length === 0 && (
               <div
                 style={{
@@ -1070,37 +1174,143 @@ function FirmaModal({
               <div
                 key={f.id}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "14px",
                   background: "#F8FAFC",
                   borderRadius: 12,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E5E7EB",
+                  overflow: "hidden",
                 }}
               >
-                <div>
-                  <div
-                    style={{ fontWeight: 700, fontSize: 15, color: "#0F172A" }}
-                  >
-                    🏢 {f.ad}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>
-                    {f.email}
-                  </div>
-                </div>
-                <span
+                <div
                   style={{
-                    fontSize: 11,
-                    background: f.aktif ? "#D1FAE5" : "#F1F5F9",
-                    color: f.aktif ? "#065F46" : "#64748B",
-                    padding: "4px 12px",
-                    borderRadius: 20,
-                    fontWeight: 700,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 14px",
                   }}
                 >
-                  {f.aktif ? "Aktif" : "Pasif"}
-                </span>
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 14,
+                        color: "#0F172A",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      🏢 {f.ad}{" "}
+                      {!f.aktif && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            background: "#FEE2E2",
+                            color: "#DC2626",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                          }}
+                        >
+                          Pasif
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}
+                    >
+                      {f.email}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => duzenleModunaGec(f)}
+                      style={{
+                        background: "#EFF6FF",
+                        color: "#2563EB",
+                        border: "1px solid #BFDBFE",
+                        borderRadius: 8,
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      Düzenle
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(f.id)}
+                      style={{
+                        background: "#FEF2F2",
+                        color: "#DC2626",
+                        border: "1px solid #FECACA",
+                        borderRadius: 8,
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      Sil
+                    </button>
+                  </div>
+                </div>
+
+                {/* İki Aşamalı Silme Onayı */}
+                {deleteConfirm === f.id && (
+                  <div
+                    style={{
+                      background: "#FEF2F2",
+                      padding: "12px 14px",
+                      borderTop: "1px solid #FECACA",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "#991B1B",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ⚠️ Firmayı tamamen silmek istiyor musunuz?
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => setDeleteConfirm(null)}
+                        style={{
+                          background: "#fff",
+                          border: "1px solid #FECACA",
+                          color: "#475569",
+                          borderRadius: 6,
+                          padding: "4px 10px",
+                          fontSize: 11,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        İptal
+                      </button>
+                      <button
+                        onClick={() => sil(f.id)}
+                        style={{
+                          background: "#DC2626",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 6,
+                          padding: "4px 10px",
+                          fontSize: 11,
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Evet, Sil
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2394,7 +2604,127 @@ function OrderModal({
     </div>
   );
 }
+// ─── RAPORLAMA VE ANALİZ EKRANI ───────────────────────────────────────────────
+function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
+  // Finansal Metrikler
+  const toplamCiro = orders.reduce((s, o) => s + (o.fiyat || 0), 0);
+  const tamamlananCiro = orders.filter((o) => o.durum === "teslim_edildi").reduce((s, o) => s + (o.fiyat || 0), 0);
+  const bekleyenCiro = toplamCiro - tamamlananCiro;
+  const ortalamaSiparis = orders.length > 0 ? Math.round(toplamCiro / orders.length) : 0;
 
+  // Hacim Metrikleri
+  const toplamM2 = orders.reduce((s, o) => s + toplamM2(o.haliKalemleri || []), 0);
+  const toplamAdet = orders.reduce((s, o) => s + toplamAdet(o.haliKalemleri || []), 0);
+
+  // Halı Türü Dağılımı
+  const turDagilimi = ht.map((t) => {
+    let m2 = 0;
+    orders.forEach((o) => {
+      (o.haliKalemleri || []).forEach((k) => {
+        if (k.turId === t.id) m2 += k.m2 * (k.adet || 1);
+      });
+    });
+    return { ...t, m2 };
+  }).filter((t) => t.m2 > 0).sort((a, b) => b.m2 - a.m2);
+
+  const maxTurM2 = turDagilimi.length > 0 ? turDagilimi[0].m2 : 1;
+
+  return (
+    <div style={{ padding: "24px", paddingBottom: "100px", maxWidth: "1200px", margin: "0 auto", fontFamily: "'Poppins', sans-serif" }}>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}>📊 İşletme Raporu</h2>
+        <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 14 }}>Tüm zamanların sipariş ve performans özetleri</p>
+      </div>
+
+      {/* ÜST ÖZET KARTLARI */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <div style={{ background: "linear-gradient(135deg, #1E40AF, #3B82F6)", borderRadius: 16, padding: 20, color: "#fff", boxShadow: "0 10px 15px -3px rgba(59, 130, 246, 0.3)" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#DBEAFE", marginBottom: 8, textTransform: "uppercase" as any }}>Toplam Ciro (Tümü)</div>
+          <div style={{ fontSize: 32, fontWeight: 800 }}>₺{toplamCiro.toLocaleString()}</div>
+        </div>
+        <div style={{ background: "#fff", borderRadius: 16, padding: 20, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase" as any }}>Tamamlanan (Kasadaki)</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#059669" }}>₺{tamamlananCiro.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>Bekleyen Alacak: ₺{bekleyenCiro.toLocaleString()}</div>
+        </div>
+        <div style={{ background: "#fff", borderRadius: 16, padding: 20, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase" as any }}>Ortalama Sepet Tutarı</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A" }}>₺{ortalamaSiparis.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>Sipariş başına ortalama kazanç</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20 }}>
+        
+        {/* HALI TÜRÜ ANALİZİ (BAR CHART) */}
+        <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#0F172A", display: "flex", justifyContent: "space-between" }}>
+            <span>Yıkanan Halı Türleri</span>
+            <span style={{ fontSize: 13, color: "#3B82F6", background: "#EFF6FF", padding: "4px 10px", borderRadius: 12 }}>Toplam: {toplamM2} m²</span>
+          </h3>
+          
+          <div style={{ display: "grid", gap: 16 }}>
+            {turDagilimi.length === 0 ? (
+              <div style={{ color: "#94A3B8", fontSize: 14 }}>Henüz veri yok.</div>
+            ) : (
+              turDagilimi.map((t) => {
+                const yuzde = Math.round((t.m2 / maxTurM2) * 100);
+                const gercekYuzde = Math.round((t.m2 / (toplamM2 || 1)) * 100);
+                return (
+                  <div key={t.id}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                      <span>{t.icon} {t.ad}</span>
+                      <span>{t.m2} m² <span style={{ color: "#94A3B8", fontWeight: 500 }}>({gercekYuzde}%)</span></span>
+                    </div>
+                    <div style={{ width: "100%", height: 10, background: "#F1F5F9", borderRadius: 6, overflow: "hidden" }}>
+                      <div style={{ width: `${yuzde}%`, height: "100%", background: "linear-gradient(90deg, #3B82F6, #60A5FA)", borderRadius: 6, transition: "width 1s ease-out" }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* SİPARİŞ DURUM ANALİZİ */}
+        <div style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#0F172A", display: "flex", justifyContent: "space-between" }}>
+            <span>Sipariş Durumları</span>
+            <span style={{ fontSize: 13, color: "#10B981", background: "#ECFDF5", padding: "4px 10px", borderRadius: 12 }}>{toplamAdet} Adet Halı</span>
+          </h3>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {Object.keys(STATUS_CONFIG).map((durumKodu) => {
+              const cfg = STATUS_CONFIG[durumKodu];
+              const adet = orders.filter((o) => o.durum === durumKodu).length;
+              if (adet === 0) return null;
+              
+              const yuzde = Math.round((adet / orders.length) * 100);
+              return (
+                <div key={durumKodu} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", background: "#F8FAFC", borderRadius: 12, border: "1px solid #E2E8F0" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: cfg.bg, color: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                    {cfg.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{cfg.label}</div>
+                    <div style={{ width: "100%", height: 6, background: "#E2E8F0", borderRadius: 4, marginTop: 6, overflow: "hidden" }}>
+                      <div style={{ width: `${yuzde}%`, height: "100%", background: cfg.color }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 50 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>{adet}</div>
+                    <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>% {yuzde}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 // ─── ANA UYGULAMA ─────────────────────────────────────────────────────────────
 export default function App() {
   const [authState, setAuthState] = useState<
@@ -2474,10 +2804,17 @@ export default function App() {
       setErr(null);
       const [ss, ff] = await Promise.all([
         dbGetir(user.token, isAdmin),
-        isAdmin ? dbFirmalariGetir(user.token) : Promise.resolve([]),
+        // Eğer admin değilsek, sadece kendi firma bilgilerini çek
+        isAdmin
+          ? dbFirmalariGetir(user.token)
+          : sbFetch(
+              `firmalar?email=eq.${user.email}&select=*`,
+              {},
+              user.token
+            ).catch(() => []),
       ]);
       setOrders(ss);
-      setFirmalar(ff);
+      setFirmalar(ff || []);
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -2756,7 +3093,11 @@ export default function App() {
                 fontWeight: 500,
               }}
             >
-              {isAdmin ? "👑 Yönetici Paneli" : user?.email}
+              {isAdmin
+                ? "👑 Yönetici Paneli"
+                : firmalar.length > 0
+                ? `🏢 ${firmalar[0].ad}`
+                : user?.email}
             </div>
           </div>
         </div>
@@ -2764,16 +3105,17 @@ export default function App() {
         <div
           className="header-tabs"
           style={{
-            background: "rgba(255,255,255,0.06)",
-            borderRadius: "12px",
-            padding: "4px",
+            background: "rgba(255,255,255,0.08)",
+            borderRadius: 12,
+            padding: 4,
             display: "none",
-            border: "1px solid rgba(255,255,255,0.05)",
           }}
         >
+          {/* ARAYA RAPORLAR EKLENDİ 👇 */}
           {[
             ["siparisler", "📋 Siparişler"],
-            ["fiyatlar", "🏷️ Fiyat Listesi"],
+            ["raporlar", "📊 Raporlar"],
+            ["fiyatlar", "🏷️ Fiyatlar"],
           ].map(([k, l]) => (
             <button
               key={k}
@@ -2998,7 +3340,8 @@ export default function App() {
           </div>
         </div>
       )}
-
+      {/* RAPORLAR SEKMESİ */}
+      {activeTab === "raporlar" && <RaporEkrani orders={orders} ht={ht} />}
       {/* SİPARİŞLER SEKMESİ */}
       {activeTab === "siparisler" && (
         <div
@@ -3700,6 +4043,7 @@ export default function App() {
       >
         {[
           ["siparisler", "📋", "Siparişler"],
+          ["raporlar", "📊", "Raporlar"],
           ["fiyatlar", "🏷️", "Fiyatlar"],
         ].map(([k, ic, l]) => (
           <button
