@@ -146,12 +146,12 @@ function smsMesaji(durum: string, order: Siparis, ht: HaliTuru[]): string {
     })
     .join(", ");
   const m: Record<string, string> = {
-    toplandı: `Sayın ${order.musteri}, halılarınız teslim alındı.\nSipariş No: ${order.id}\nHalılar: ${tl}\nTutar: ₺${order.fiyat}\nHalıPro`,
-    yıkamada: `Sayın ${order.musteri}, halılarınız yıkamaya alındı.\nSipariş No: ${order.id}\nHalılar: ${tl}\nHalıPro`,
-    kurutuluyor: `Sayın ${order.musteri}, halılarınız kurutuluyor.\nSipariş No: ${order.id}\nHalıPro`,
-    hazır: `Sayın ${order.musteri}, halılarınız HAZIR! 🎉\nSipariş No: ${order.id}\nHalılar: ${tl}\nÖdenecek: ₺${order.fiyat}\nHalıPro`,
-    dağıtımda: `Sayın ${order.musteri}, halılarınız yola çıktı! 🏍️\nSipariş No: ${order.id}\nÖdenecek: ₺${order.fiyat}\nHalıPro`,
-    teslim_edildi: `Sayın ${order.musteri}, halılarınız teslim edildi. ✅\nToplam: ₺${order.fiyat}\nHalıPro'yu tercih ettiğiniz için teşekkürler!`,
+    toplandı: `Sayın *${order.musteri}*, halılarınız teslim alındı. 🚛\nSipariş No: ${order.id}\nHalılar: ${tl}\nTutar: *₺${order.fiyat}*\n~ Temiz360`,
+    yıkamada: `Sayın *${order.musteri}*, halılarınız yıkamaya alındı. 🫧\nSipariş No: ${order.id}\nHalılar: ${tl}\n~ Temiz360`,
+    kurutuluyor: `Sayın *${order.musteri}*, halılarınız kurutuluyor. 💨\nSipariş No: ${order.id}\n~ Temiz360`,
+    hazır: `Sayın *${order.musteri}*, halılarınız HAZIR! 🎉\nSipariş No: ${order.id}\nHalılar: ${tl}\nÖdenecek: *₺${order.fiyat}*\n~ Temiz360`,
+    dağıtımda: `Sayın *${order.musteri}*, halılarınız yola çıktı! 🏍️\nSipariş No: ${order.id}\nÖdenecek: *₺${order.fiyat}*\n~ Temiz360`,
+    teslim_edildi: `Sayın *${order.musteri}*, halılarınız teslim edildi. ✅\nToplam: *₺${order.fiyat}*\nTemiz360'ı tercih ettiğiniz için teşekkürler!`,
   };
   return m[durum] || "";
 }
@@ -634,13 +634,30 @@ function SmsModal({ order, ht, onClose, onSend }: { order: Siparis; ht: HaliTuru
   const [sel, setSel] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const txt = sel ? smsMesaji(sel, order, ht) : "";
-  const handleSend = async () => { if (!sel) return; setSending(true); await onSend(sel, txt); onClose(); };
+  
+  const handleSend = async () => { 
+    if (!sel) return; 
+    setSending(true); 
+    
+    // Telefon numarası temizleme ve formatlama (90...)
+    let tel = order.telefon.replace(/[^0-9]/g, "");
+    if (tel.startsWith("0")) tel = "9" + tel;
+    else if (tel.startsWith("5")) tel = "90" + tel;
+
+    // WhatsApp linkini aç
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(txt)}`, "_blank");
+
+    // Veritabanına log düş
+    await onSend(sel, txt); 
+    onClose(); 
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 2000, fontFamily: "'Poppins', sans-serif" }} onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 600, maxHeight: "85vh", overflowY: "auto" }} onClick={(e: any) => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: "#E2E8F0", borderRadius: 4, margin: "0 auto 20px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>📱 SMS Gönder</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>📱 WhatsApp Mesajı</h2>
           <button onClick={onClose} style={{ background: "#F1F5F9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
         <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "14px", marginBottom: 16, fontSize: 14, color: "#334155", border: "1px solid #E2E8F0" }}><strong>{order.musteri}</strong> <br /> {order.telefon}</div>
@@ -663,8 +680,8 @@ function SmsModal({ order, ht, onClose, onSend }: { order: Siparis; ht: HaliTuru
             <div style={{ fontSize: 14, color: "#15803D", lineHeight: 1.6, whiteSpace: "pre-line" as any }}>{txt}</div>
           </div>
         )}
-        <button onClick={handleSend} disabled={!sel || sending} style={{ width: "100%", padding: "16px", borderRadius: 12, border: "none", background: sel ? "linear-gradient(135deg,#059669,#10B981)" : "#E2E8F0", color: sel ? "#fff" : "#94A3B8", cursor: sel ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 16, fontFamily: "inherit" }}>
-          {sending ? "Gönderiliyor..." : "📤 Mesajı Gönder"}
+        <button onClick={handleSend} disabled={!sel || sending} style={{ width: "100%", padding: "16px", borderRadius: 12, border: "none", background: sel ? "#25D366" : "#E2E8F0", color: sel ? "#fff" : "#94A3B8", cursor: sel ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 16, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+          {sending ? "WhatsApp Açılıyor..." : <span><span style={{fontSize: "18px"}}>💬</span> WhatsApp ile Gönder</span>}
         </button>
       </div>
     </div>
@@ -742,8 +759,8 @@ function DetailSheet({ order, ht, isAdmin, onClose, onStatusChange, onEdit, onSm
           )}
         </div>
         <div style={{ display: "grid", gap: 10 }}>
-          <button onClick={() => onSmsOpen(order)} style={{ padding: "16px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#059669,#10B981)", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 15, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-            📱 SMS Gönder {smsSayisi > 0 && <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px", fontSize: 12 }}>{smsSayisi}</span>}
+          <button onClick={() => onSmsOpen(order)} style={{ padding: "16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 15, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            💬 WhatsApp Mesajı {smsSayisi > 0 && <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "2px 10px", fontSize: 12 }}>{smsSayisi}</span>}
           </button>
           <div style={{ display: "grid", gridTemplateColumns: idx > 0 ? "1fr 1fr" : "1fr", gap: 10 }}>
             {idx > 0 && <button onClick={() => onStatusChange(order.id, keys[idx - 1])} style={{ padding: "14px", borderRadius: 12, border: "1.5px solid #E2E8F0", background: "#fff", cursor: "pointer", fontWeight: 600, fontSize: 14, fontFamily: "inherit", color: "#475569" }}>← Geri Al</button>}
