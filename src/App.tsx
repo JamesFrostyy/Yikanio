@@ -116,13 +116,13 @@ async function authLogout(token: string): Promise<void> {
 
 // ─── SABİTLER ────────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, StatusCfg> = {
-  bekliyor: { label: "Bekliyor", color: "#F59E0B", bg: "#FEF3C7", icon: "⏳" },
-  toplandı: { label: "Toplandı", color: "#3B82F6", bg: "#DBEAFE", icon: "🚛" },
-  yıkamada: { label: "Yıkamada", color: "#8B5CF6", bg: "#EDE9FE", icon: "🫧" },
-  kurutuluyor: { label: "Kurutuluyor", color: "#06B6D4", bg: "#CFFAFE", icon: "💨" },
-  hazır: { label: "Hazır", color: "#10B981", bg: "#D1FAE5", icon: "✅" },
-  dağıtımda: { label: "Dağıtımda", color: "#F97316", bg: "#FFEDD5", icon: "🏍️" },
-  teslim_edildi: { label: "Teslim Edildi", color: "#6B7280", bg: "#F3F4F6", icon: "📦" },
+  bekliyor: { label: "Bekliyor", color: "#F59E0B", bg: "#FEF3C7", icon: "" },
+  toplandı: { label: "Toplandı", color: "#3B82F6", bg: "#DBEAFE", icon: "" },
+  yıkamada: { label: "Yıkamada", color: "#8B5CF6", bg: "#EDE9FE", icon: "" },
+  kurutuluyor: { label: "Kurutuluyor", color: "#06B6D4", bg: "#CFFAFE", icon: "" },
+  hazır: { label: "Hazır", color: "#10B981", bg: "#D1FAE5", icon: "" },
+  dağıtımda: { label: "Dağıtımda", color: "#F97316", bg: "#FFEDD5", icon: "" },
+  teslim_edildi: { label: "Teslim Edildi", color: "#6B7280", bg: "#F3F4F6", icon: "" },
 };
 
 const STATUSLAR = ["Tümü", ...Object.keys(STATUS_CONFIG)];
@@ -140,11 +140,11 @@ function smsMesaji(durum: string, order: Siparis, ht: HaliTuru[], firmaAd: strin
   const firma = firmaAd || "Temiz360";
   const m: Record<string, string> = {
     toplandı: `Sayın ${order.musteri}, halılarınız teslim alındı.\nSipariş No: ${order.id}\nHalılar: ${tl}\nAdet: ${adet}\nToplam m²: ${m2}\nTutar: ₺${order.fiyat}\n${firma}`,
-    yıkamada: `Sayın ${order.musteri}, halılarınız yıkamaya alındı. 🫧\nSipariş No: ${order.id}\nHalılar: ${tl}\n${firma}`,
-    kurutuluyor: `Sayın ${order.musteri}, halılarınız kurutuluyor. 💨\nSipariş No: ${order.id}\n${firma}`,
-    hazır: `Sayın ${order.musteri}, halılarınız HAZIR! 🎉\nSipariş No: ${order.id}\nHalılar: ${tl}\nÖdenecek: ₺${order.fiyat}\n${firma}`,
-    dağıtımda: `Sayın ${order.musteri}, halılarınız yola çıktı! 🏍️\nSipariş No: ${order.id}\nÖdenecek: ₺${order.fiyat}\n${firma}`,
-    teslim_edildi: `Sayın ${order.musteri}, halılarınız teslim edildi. ✅\nToplam: ₺${order.fiyat}\n${firma}'ı tercih ettiğiniz için teşekkürler!`,
+    yıkamada: `Sayın ${order.musteri}, halılarınız yıkamaya alındı.\nSipariş No: ${order.id}\nHalılar: ${tl}\n${firma}`,
+    kurutuluyor: `Sayın ${order.musteri}, halılarınız kurutuluyor.\nSipariş No: ${order.id}\n${firma}`,
+    hazır: `Sayın ${order.musteri}, halılarınız HAZIR!\nSipariş No: ${order.id}\nHalılar: ${tl}\nÖdenecek: ₺${order.fiyat}\n${firma}`,
+    dağıtımda: `Sayın ${order.musteri}, halılarınız yola çıktı!\nSipariş No: ${order.id}\nÖdenecek: ₺${order.fiyat}\n${firma}`,
+    teslim_edildi: `Sayın ${order.musteri}, halılarınız teslim edildi.\nToplam: ₺${order.fiyat}\n${firma}'ı tercih ettiğiniz için teşekkürler!`,
   };
   return m[durum] || "";
 }
@@ -156,14 +156,14 @@ const toplamAdet = (k: HaliKalemi[]) =>
 
 // ─── DB ──────────────────────────────────────────────────────────────────────
 const VARSAYILAN_FIYAT_LISTESI: { ad: string; birimFiyat: number; icon: string; }[] = [
-    { ad: "Klasik / Düz", birimFiyat: 25, icon: "🟫" },
-    { ad: "Akrilik", birimFiyat: 30, icon: "🟦" },
-    { ad: "Yün", birimFiyat: 45, icon: "🐑" },
-    { ad: "İpek / Bambu", birimFiyat: 80, icon: "✨" },
-    { ad: "Shaggy / Tüylü", birimFiyat: 40, icon: "🦁" },
-    { ad: "Kilim / Düz Dokuma", birimFiyat: 20, icon: "🔶" },
-    { ad: "Çocuk Odası Halısı", birimFiyat: 28, icon: "🧒" },
-    { ad: "Banyo / Kapı Paspası", birimFiyat: 15, icon: "🚿" },
+    { ad: "Klasik / Düz", birimFiyat: 25, icon: "" },
+    { ad: "Akrilik", birimFiyat: 30, icon: "" },
+    { ad: "Yün", birimFiyat: 45, icon: "" },
+    { ad: "İpek / Bambu", birimFiyat: 80, icon: "" },
+    { ad: "Shaggy / Tüylü", birimFiyat: 40, icon: "" },
+    { ad: "Kilim / Düz Dokuma", birimFiyat: 20, icon: "" },
+    { ad: "Çocuk Odası Halısı", birimFiyat: 28, icon: "" },
+    { ad: "Banyo / Kapı Paspası", birimFiyat: 15, icon: "" },
 ];
 
 async function dbHaliTurleriniGetir(token: string, firmaId: string): Promise<HaliTuru[]> {
