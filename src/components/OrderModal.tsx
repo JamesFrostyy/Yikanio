@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Siparis, HaliTuru, HaliKalemi, Firma } from "../types";
-import { toplamM2, toplamAdet } from "../lib/db";
+import { toplamM2, toplamAdet, dbMusteriAra } from "../lib/db";
 
 interface OrderModalProps {
   order: Siparis | null;
   ht: HaliTuru[];
   firmalar: Firma[];
   isAdmin: boolean;
+  token: string;
+  firmaId: string;
   onClose: () => void;
   onSave: (form: OrderForm) => Promise<void>;
 }
@@ -21,6 +23,13 @@ export interface OrderForm {
   haliKalemleri: HaliKalemi[];
 }
 
+interface MusteriOneri {
+  id: string;
+  ad_soyad: string;
+  telefon: string;
+  adres: string;
+}
+
 const inp: React.CSSProperties = {
   padding: "10px 14px", borderRadius: 10,
   border: "1.5px solid #E2E8F0", fontSize: 14,
@@ -30,7 +39,7 @@ const inp: React.CSSProperties = {
 
 const bugun = () => new Date().toISOString().split("T")[0];
 
-export function OrderModal({ order, ht, firmalar, isAdmin, onClose, onSave }: OrderModalProps) {
+export function OrderModal({ order, ht, firmalar, isAdmin, token, firmaId: propFirmaId, onClose, onSave }: OrderModalProps) {
   const [musteri, setMusteri] = useState("");
   const [telefon, setTelefon] = useState("");
   const [adres, setAdres] = useState("");
@@ -40,6 +49,12 @@ export function OrderModal({ order, ht, firmalar, isAdmin, onClose, onSave }: Or
   const [kalemler, setKalemler] = useState<HaliKalemi[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+
+  // Autocomplete state
+  const [oneriler, setOneriler] = useState<MusteriOneri[]>([]);
+  const [showOneriler, setShowOneriler] = useState(false);
+  const [aramaTimer, setAramaTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const musteriRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (order) {
@@ -53,10 +68,45 @@ export function OrderModal({ order, ht, firmalar, isAdmin, onClose, onSave }: Or
     } else {
       setMusteri(""); setTelefon(""); setAdres("");
       setNotlar(""); setTarih(bugun());
-      setFirmaId(isAdmin && firmalar.length > 0 ? firmalar[0].id : "");
+      setFirmaId(isAdmin && firmalar.length > 0 ? firmalar[0].id : propFirmaId);
       setKalemler([]);
     }
-  }, [order, firmalar, isAdmin]);
+  }, [order, firmalar, isAdmin, propFirmaId]);
+
+  // Dışarı tıklayınca önerileri kapat
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (musteriRef.current && !musteriRef.current.contains(e.target as Node)) {
+        setShowOneriler(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const musteriDegisti = (val: string) => {
+    setMusteri(val);
+    if (aramaTimer) clearTimeout(aramaTimer);
+    if (val.length < 2) { setOneriler([]); setShowOneriler(false); return; }
+
+    const aktifFirmaId = isAdmin ? firmaId : propFirmaId;
+    if (!aktifFirmaId) return;
+
+    const timer = setTimeout(async () => {
+      const sonuc = await dbMusteriAra(token, aktifFirmaId, val);
+      setOneriler(sonuc);
+      setShowOneriler(sonuc.length > 0);
+    }, 300);
+    setAramaTimer(timer);
+  };
+
+  const musteriSec = (m: MusteriOneri) => {
+    setMusteri(m.ad_soyad);
+    setTelefon(m.telefon);
+    setAdres(m.adres || "");
+    setShowOneriler(false);
+    setOneriler([]);
+  };
 
   const kalemEkle = () => {
     if (ht.length === 0) return;
@@ -117,10 +167,42 @@ export function OrderModal({ order, ht, firmalar, isAdmin, onClose, onSave }: Or
 
         {/* Müşteri Bilgileri */}
         <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
-          <div>
+
+          {/* Müşteri Adı — Autocomplete */}
+          <div ref={musteriRef} style={{ position: "relative" }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: "#64748B", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Müşteri Adı</label>
-            <input style={inp} value={musteri} onChange={(e) => setMusteri(e.target.value)} placeholder="Ad Soyad" />
+            <input
+              style={inp}
+              value={musteri}
+              onChange={(e) => musteriDegisti(e.target.value)}
+              onFocus={() => oneriler.length > 0 && setShowOneriler(true)}
+              placeholder="Ad Soyad ara veya yaz..."
+              autoComplete="off"
+            />
+            {showOneriler && (
+              <div style={{
+                position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200,
+                background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)", overflow: "hidden", marginTop: 4,
+              }}>
+                {oneriler.map((m) => (
+                  <div
+                    key={m.id}
+                    onMouseDown={() => musteriSec(m)}
+                    style={{ padding: "12px 16px", cursor: "pointer", borderBottom: "1px solid #F1F5F9", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A" }}>👤 {m.ad_soyad}</div>
+                    <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                      📞 {m.telefon}{m.adres ? ` · 📍 ${m.adres}` : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, color: "#64748B", display: "block", marginBottom: 6, textTransform: "uppercase" }}>Telefon</label>
             <input style={inp} value={telefon} onChange={(e) => setTelefon(e.target.value)} placeholder="05XX XXX XX XX" type="tel" />

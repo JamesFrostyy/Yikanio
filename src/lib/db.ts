@@ -195,6 +195,12 @@ export async function dbKaydet(
     );
   }
 
+  // Müşteriyi kaydet/güncelle
+  const aktifFirmaId = firmaId || form.firmaId;
+  if (aktifFirmaId) {
+    await dbMusteriKaydet(token, aktifFirmaId, form.musteri, form.telefon, form.adres);
+  }
+
   const kalemler = form.haliKalemleri.map((k) => {
     const tur = ht.find((t) => t.id === k.turId);
     return {
@@ -224,4 +230,50 @@ export async function dbSil(token: string, id: string): Promise<void> {
     { method: "DELETE", prefer: "return=minimal" },
     token
   );
+}
+export async function dbMusteriAra(
+  token: string,
+  firmaId: string,
+  aramaMetni: string
+): Promise<{ id: string; ad_soyad: string; telefon: string; adres: string }[]> {
+  if (!aramaMetni || aramaMetni.length < 2) return [];
+  try {
+    const sonuc = await sbFetch(
+      `musteriler?firma_id=eq.${firmaId}&ad_soyad=ilike.*${aramaMetni}*&select=id,ad_soyad,telefon,adres&limit=5`,
+      {},
+      token
+    ) as { id: string; ad_soyad: string; telefon: string; adres: string }[];
+    return sonuc;
+  } catch {
+    return [];
+  }
+}
+
+export async function dbMusteriKaydet(
+  token: string,
+  firmaId: string,
+  adSoyad: string,
+  telefon: string,
+  adres: string
+): Promise<void> {
+  // Aynı telefon+firma varsa güncelle, yoksa ekle
+  const mevcut = await sbFetch(
+    `musteriler?firma_id=eq.${firmaId}&telefon=eq.${telefon}&select=id`,
+    {},
+    token
+  ) as { id: string }[];
+
+  if (mevcut?.length > 0) {
+    await sbFetch(
+      `musteriler?id=eq.${mevcut[0].id}`,
+      { method: "PATCH", prefer: "return=minimal", body: JSON.stringify({ ad_soyad: adSoyad, adres }) },
+      token
+    );
+  } else {
+    await sbFetch(
+      "musteriler",
+      { method: "POST", body: JSON.stringify({ firma_id: firmaId, ad_soyad: adSoyad, telefon, adres }) },
+      token
+    );
+  }
 }

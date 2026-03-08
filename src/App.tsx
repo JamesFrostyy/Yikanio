@@ -207,10 +207,20 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: "#F8FAFC", fontFamily: "'Poppins', sans-serif" }}>
         <header style={{ background: "#0F172A", borderBottom: "1px solid #1E293B", padding: "0 20px", position: "sticky", top: 0, zIndex: 100 }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 18, color: "#fff" }}>🪣 HalıPro</div>
-              <div style={{ fontSize: 11, color: "#3B82F6", fontWeight: 600 }}>⚙️ Platform Yöneticisi</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Yikanio Premium Logo */}
+          <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
+            <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <div>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: "20px", lineHeight: 1, letterSpacing: "-0.5px" }}>
+              Yikan<span style={{ color: "#38BDF8" }}>io</span>
             </div>
+            <div style={{ color: "#94A3B8", fontSize: "11px", marginTop: "3px", fontWeight: 500, letterSpacing: "0.5px" }}>
+              {isAdmin ? "👑 YÖNETİM PANELİ" : (firmaAd ? `🏢 ${firmaAd.toUpperCase()}` : user?.email)}
+            </div>
+          </div>
+        </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={yukle} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #334155", background: "transparent", color: "#94A3B8", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>🔄 Yenile</button>
               <button onClick={logout} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #334155", background: "transparent", color: "#94A3B8", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Çıkış</button>
@@ -230,15 +240,20 @@ export default function App() {
       <header style={{ background: "#fff", borderBottom: "1px solid #E2E8F0", padding: "0 20px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div>
-        <div style={{ fontWeight: 800, fontSize: 18, color: "#0F172A" }}>🪣 HalıPro</div>
-            {!isAdmin && firmaAd && (
-        <div style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}>{firmaAd}</div>
-        )}
-         {isAdmin && (
-        <div style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600 }}>⚙️ Yönetici</div>
-      )}
-     </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {/* Yikanio Premium Logo */}
+              <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
+                <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              <div>
+                <div style={{ color: "#0F172A", fontWeight: 800, fontSize: "20px", lineHeight: 1, letterSpacing: "-0.5px" }}>
+                  Yikan<span style={{ color: "#38BDF8" }}>io</span>
+                </div>
+                <div style={{ color: "#64748B", fontSize: "11px", marginTop: "3px", fontWeight: 500, letterSpacing: "0.5px" }}>
+                  {isAdmin ? "👑 YÖNETİM PANELİ" : (firmaAd ? `🏢 ${firmaAd.toUpperCase()}` : user?.email)}
+                </div>
+              </div>
+            </div>
             <nav style={{ display: "flex", gap: 4 }} className="desktop-nav">
               {[["siparisler", "📋 Siparişler"], ["raporlar", "📊 Raporlar"], ...(!isAdmin ? [["fiyatlar", "🏷️ Fiyatlar"]] : [])].map(([k, l]) => (
                 <button key={k} onClick={() => setActiveTab(k)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: activeTab === k ? "#EFF6FF" : "transparent", color: activeTab === k ? "#2563EB" : "#64748B", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
@@ -351,14 +366,8 @@ export default function App() {
 
       {/* Modallar */}
       {sel && <DetailSheet order={orders.find((o) => o.id === sel.id) || null} ht={ht} isAdmin={isAdmin} onClose={() => setSel(null)} onStatusChange={handleStatus} onEdit={(o) => { setEditing(o); setShowOrder(true); setSel(null); }} onSmsOpen={(o) => { setSmsOrder(o); setSel(null); }} />}
-      {showOrder && <OrderModal order={editing} ht={ht} firmalar={firmalar} isAdmin={isAdmin} onClose={() => { setShowOrder(false); setEditing(null); }} onSave={handleSave} />}
-      {smsOrder && <SmsModal 
-  order={smsOrder} 
-  ht={ht} 
-  firmaAd={isAdmin ? smsOrder.firmaAd || "" : firmaAd} 
-  onClose={() => setSmsOrder(null)} 
-  onSend={handleSms} 
-/>}
+      {showOrder && <OrderModal order={editing} ht={ht} firmalar={firmalar} isAdmin={isAdmin} token={user!.token} firmaId={firmaId} onClose={() => { setEditing(null); setShowOrder(false); }} onSave={handleSave} />}
+      {smsOrder && <SmsModal order={smsOrder} ht={ht} firmaAd={isAdmin ? smsOrder.firmaAd || "" : firmaAd} onClose={() => setSmsOrder(null)} onSend={handleSms} />}
       {showHali && !isAdmin && <HaliModal turler={ht} onClose={() => setShowHali(false)} onSave={handleHaliTurleriSave} />}
       {showFirma && isAdmin && <FirmaModal token={user!.token} onClose={() => setShowFirma(false)} onSaved={yukle} />}
 
@@ -388,8 +397,10 @@ function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) =
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0F172A,#1E293B)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Poppins', sans-serif" }}>
       <div style={{ background: "#fff", borderRadius: 24, padding: 40, width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🪣</div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}>HalıPro</h1>
+          <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", margin: "0 auto 12px" }}>
+            <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}>Yikan<span style={{ color: "#38BDF8" }}>io</span></h1>
           <p style={{ margin: "8px 0 0", color: "#64748B", fontSize: 14 }}>Halı Yıkama Yönetim Sistemi</p>
         </div>
         <div style={{ display: "grid", gap: 12 }}>
