@@ -394,7 +394,7 @@ function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) =
   const inp: React.CSSProperties = { width: "100%", padding: "14px 16px", borderRadius: 12, border: "1.5px solid #E2E8F0", fontSize: 15, fontFamily: "'Poppins', sans-serif", outline: "none", boxSizing: "border-box" };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0F172A,#1E293B)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Poppins', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.9)), url(/arkaplan.jpg)", backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Poppins', sans-serif" }}>
       <div style={{ background: "#fff", borderRadius: 24, padding: 40, width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", margin: "0 auto 12px" }}>
