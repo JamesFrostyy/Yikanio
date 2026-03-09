@@ -161,6 +161,14 @@ export default function App() {
   showToast(editing ? "Sipariş güncellendi!" : "Sipariş oluşturuldu!");
 };
 
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+    await sbFetch(`hali_kalemleri?siparis_id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" }, user.token);
+    await sbFetch(`siparisler?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" }, user.token);
+    setOrders((prev) => prev.filter((o) => o.id !== id));
+    showToast("Sipariş silindi!");
+  };
+
   const handleStatus = async (id: string, durum: string) => {
     if (!user) return;
     await sbFetch(`siparisler?id=eq.${id}`, { method: "PATCH", prefer: "return=minimal", body: JSON.stringify({ durum }) }, user.token);
@@ -239,8 +247,8 @@ export default function App() {
       {/* Header */}
       <header style={{ background: "#fff", borderBottom: "1px solid #E2E8F0", padding: "0 20px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0, flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {/* Yikanio Premium Logo */}
               <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
                 <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -279,7 +287,7 @@ export default function App() {
       {activeTab === "siparisler" && (
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px 100px" }}>
           {/* Arama & Filtre */}
-          <div className="filter-row" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Müşteri, telefon veya sipariş no ara..." style={{ flex: 1, minWidth: 200, padding: "10px 16px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, fontFamily: "inherit", outline: "none" }} />
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "10px 16px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, fontFamily: "inherit", background: "#fff", cursor: "pointer" }}>
               {STATUSLAR.map((s) => <option key={s} value={s}>{s === "Tümü" ? "Tüm Durumlar" : STATUS_CONFIG[s]?.label}</option>)}
@@ -292,8 +300,8 @@ export default function App() {
             )}
           </div>
 
-          {/* ── DESKTOP: Tablo ── */}
-          <div className="order-table" style={{ background: "#fff", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden" }}>
+          {/* Tablo */}
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden" }}>
             {loading ? (
               <div style={{ padding: 60, textAlign: "center" }}>
                 <div style={{ width: 40, height: 40, border: "3px solid #E2E8F0", borderTop: "3px solid #3B82F6", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
@@ -347,63 +355,12 @@ export default function App() {
               </div>
             )}
           </div>
-
-          {/* ── MOBİL: Kartlar ── */}
-          <div className="order-cards">
-            {loading ? (
-              <div style={{ padding: 40, textAlign: "center" }}>
-                <div style={{ width: 36, height: 36, border: "3px solid #E2E8F0", borderTop: "3px solid #3B82F6", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontSize: 14 }}>Sonuç bulunamadı.</div>
-            ) : filtered.map((order) => {
-              const smsSayisi = Object.values(order.smsDurum || {}).filter(Boolean).length;
-              return (
-                <div key={order.id} onClick={() => setSel(order)} style={{ background: "#fff", borderRadius: 16, border: "1px solid #E2E8F0", padding: 16, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-                  {/* Üst satır: No + Tarih */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700, color: "#475569", fontSize: 11, background: "#F1F5F9", padding: "3px 8px", borderRadius: 6 }}>{order.id}</span>
-                    <span style={{ fontSize: 12, color: "#94A3B8" }}>{order.tarih}</span>
-                  </div>
-                  {/* Müşteri */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 16, color: "#0F172A" }}>{order.musteri}</div>
-                      <div style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>{order.telefon}</div>
-                      {isAdmin && order.firmaAd && <div style={{ fontSize: 11, color: "#3B82F6", marginTop: 4, fontWeight: 600 }}>🏢 {order.firmaAd}</div>}
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 800, fontSize: 18, color: "#059669" }}>₺{order.fiyat?.toLocaleString()}</div>
-                      {smsSayisi > 0 && <div style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>📱 {smsSayisi} mesaj</div>}
-                    </div>
-                  </div>
-                  {/* Halı Detayı */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                    {(order.haliKalemleri || []).map((k, ki) => {
-                      const tur = ht.find((t) => t.id === k.turId);
-                      return <span key={ki} style={{ fontSize: 11, background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569", padding: "4px 8px", borderRadius: 6, fontWeight: 500 }}>{tur?.icon} {tur?.ad} · {k.m2}m²</span>;
-                    })}
-                  </div>
-                  {/* Alt satır: Durum + Düzenle */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <StatusBadge durum={order.durum} />
-                    <button onClick={(e) => { e.stopPropagation(); setEditing(order); setShowOrder(true); }} style={{ background: "#EFF6FF", color: "#2563EB", border: "none", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Düzenle</button>
-                  </div>
-                </div>
-              );
-            })}
-            {!loading && filtered.length > 0 && (
-              <div style={{ padding: "10px 4px", fontSize: 13, color: "#94A3B8", textAlign: "center" }}>
-                Toplam <strong style={{ color: "#475569" }}>{filtered.length}</strong> sipariş
-              </div>
-            )}
-          </div>
         </div>
       )}
 
       {/* Mobil Alt Nav */}
       <div className="bottom-nav" style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(10px)", borderTop: "1px solid #E2E8F0", padding: "12px 0 20px", justifyContent: "space-around", zIndex: 100 }}>
-        {[["siparisler", "📋", "Siparişler"], ["raporlar", "📊", "Raporlar"]].map(([k, ic, l]) => (
+        {[["siparisler", "📋", "Siparişler"], ["raporlar", "📊", "Raporlar"], ...(!isAdmin ? [["fiyatlar", "🏷️", "Fiyatlar"]] : [])].map(([k, ic, l]) => (
           <button key={k} onClick={() => setActiveTab(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", flex: 1 }}>
             <span style={{ fontSize: 22 }}>{ic}</span>
             <span style={{ fontSize: 11, fontWeight: activeTab === k ? 700 : 500, color: activeTab === k ? "#2563EB" : "#64748B" }}>{l}</span>
@@ -416,7 +373,7 @@ export default function App() {
       </div>
 
       {/* Modallar */}
-      {sel && <DetailSheet order={orders.find((o) => o.id === sel.id) || null} ht={ht} isAdmin={isAdmin} onClose={() => setSel(null)} onStatusChange={handleStatus} onEdit={(o) => { setEditing(o); setShowOrder(true); setSel(null); }} onSmsOpen={(o) => { setSmsOrder(o); setSel(null); }} />}
+      {sel && <DetailSheet order={orders.find((o) => o.id === sel.id) || null} ht={ht} isAdmin={isAdmin} onClose={() => setSel(null)} onStatusChange={handleStatus} onEdit={(o) => { setEditing(o); setShowOrder(true); setSel(null); }} onSmsOpen={(o) => { setSmsOrder(o); setSel(null); }} onDelete={handleDelete} />}
       {showOrder && <OrderModal order={editing} ht={ht} firmalar={firmalar} isAdmin={isAdmin} token={user!.token} firmaId={firmaId} onClose={() => { setEditing(null); setShowOrder(false); }} onSave={handleSave} />}
       {smsOrder && <SmsModal order={smsOrder} ht={ht} firmaAd={isAdmin ? smsOrder.firmaAd || "" : firmaAd} onClose={() => setSmsOrder(null)} onSend={handleSms} />}
       {showHali && !isAdmin && <HaliModal turler={ht} onClose={() => setShowHali(false)} onSave={handleHaliTurleriSave} />}

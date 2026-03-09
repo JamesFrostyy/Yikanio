@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Siparis, HaliTuru } from "../types";
 import { STATUS_CONFIG } from "../constants";
 import { toplamAdet, toplamM2 } from "../lib/db";
@@ -11,9 +12,11 @@ interface DetailSheetProps {
   onStatusChange: (id: string, durum: string) => void;
   onEdit: (order: Siparis) => void;
   onSmsOpen: (order: Siparis) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function DetailSheet({ order, ht, isAdmin, onClose, onStatusChange, onEdit, onSmsOpen }: DetailSheetProps) {
+export function DetailSheet({ order, ht, isAdmin, onClose, onStatusChange, onEdit, onSmsOpen, onDelete }: DetailSheetProps) {
+  const [silConfirm, setSilConfirm] = useState(false);
   if (!order) return null;
   const keys = Object.keys(STATUS_CONFIG);
   const idx = keys.indexOf(order.durum);
@@ -150,6 +153,23 @@ export function DetailSheet({ order, ht, isAdmin, onClose, onStatusChange, onEdi
             💬 WhatsApp {smsSayisi > 0 ? `(${smsSayisi})` : ""}
           </button>
         </div>
+        {onDelete && (
+          <div style={{ marginTop: 10 }}>
+            {silConfirm ? (
+              <div style={{ background: "#FEF2F2", borderRadius: 12, padding: "12px 16px", border: "1px solid #FECACA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "#991B1B", fontWeight: 600 }}>⚠️ Siparişi silmek istiyor musunuz?</span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setSilConfirm(false)} style={{ background: "#fff", border: "1px solid #FECACA", color: "#475569", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>İptal</button>
+                  <button onClick={() => { onDelete(order.id); onClose(); }} style={{ background: "#DC2626", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>Evet, Sil</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setSilConfirm(true)} style={{ width: "100%", padding: 12, borderRadius: 12, border: "none", background: "#FEF2F2", color: "#DC2626", cursor: "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
+                🗑️ Siparişi Sil
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
