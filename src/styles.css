@@ -1,4 +1,33 @@
-.App {
-  font-family: sans-serif;
-  text-align: center;
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Desktop nav görünür, mobile nav gizli */
+.desktop-nav { display: flex !important; }
+.bottom-nav  { display: none !important; }
+
+/* Sipariş tablosu — desktop */
+.order-table  { display: table !important; }
+.order-cards  { display: none !important; }
+
+@media (max-width: 768px) {
+  /* Desktop nav gizle, mobile nav göster */
+  .desktop-nav { display: none !important; }
+  .bottom-nav  { display: flex !important; }
+
+  /* Tablo gizle, kart göster */
+  .order-table { display: none !important; }
+  .order-cards { display: flex !important; flex-direction: column; gap: 10px; }
+
+  /* Header sıkıştır */
+  .header-firma-ad { display: none; }
+
+  /* Filtre alanı tek satıra sığsın */
+  .filter-row { flex-direction: column !important; }
+  .filter-row input,
+  .filter-row select { width: 100% !important; min-width: unset !important; }
 }
