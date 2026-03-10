@@ -13,6 +13,7 @@ import { OrderModal, OrderForm } from "./components/OrderModal";
 import { HaliModal } from "./components/HaliModal";
 import { FirmaModal } from "./components/FirmaModal";
 import { AdminPanel } from "./components/AdminPanel";
+import { MusteriGecmisi } from "./components/MusteriGecmisi";
 
 // ─── RAPOR ────────────────────────────────────────────────────────────────────
 function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
@@ -21,6 +22,7 @@ function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
   const bekleyenCiro = orders.filter((o) => o.durum !== "teslim_edildi").reduce((s, o) => s + o.fiyat, 0);
   const ortalamaSiparis = orders.length ? Math.round(toplamCiro / orders.length) : 0;
   const aktifSiparis = orders.filter((o) => !["teslim_edildi"].includes(o.durum)).length;
+  const [musteriGecmisi, setMusteriGecmisi] = useState<{ ad: string; telefon: string } | null>(null);
 
   const turDagilimi = ht.map((t) => {
     const m2 = orders.flatMap((o) => o.haliKalemleri || []).filter((k) => k.turId === t.id).reduce((s, k) => s + (k.m2 || 0) * (k.adet || 1), 0);
@@ -316,7 +318,12 @@ export default function App() {
                       <tr key={order.id} onClick={() => setSel(order)} style={{ cursor: "pointer", borderBottom: "1px solid #F1F5F9", transition: "background 0.15s" }} onMouseOver={(e) => (e.currentTarget.style.background = "#F8FAFC")} onMouseOut={(e) => (e.currentTarget.style.background = "#fff")}>
                         <td style={{ padding: "14px 16px" }}><span style={{ fontWeight: 700, color: "#475569", fontSize: 12, background: "#F1F5F9", padding: "4px 8px", borderRadius: 6 }}>{order.id}</span></td>
                         <td style={{ padding: "14px 16px" }}>
-                          <div style={{ fontWeight: 700, color: "#0F172A" }}>{order.musteri}</div>
+                          <div
+                              style={{ fontWeight: 700, color: "#0F172A", cursor: "pointer", textDecoration: "underline dotted" }}
+                                onClick={(e) => { e.stopPropagation(); setMusteriGecmisi({ ad: order.musteri, telefon: order.telefon }); }}
+                                >
+                              {order.musteri}
+                          </div>
                           <div style={{ fontSize: 12, color: "#64748B" }}>{order.telefon}</div>
                         </td>
                         {isAdmin && <td style={{ padding: "14px 16px" }}><span style={{ fontSize: 12, color: "#475569", background: "#F8FAFC", padding: "4px 8px", border: "1px solid #E2E8F0", borderRadius: 6 }}>🏢 {order.firmaAd || "Bireysel"}</span></td>}
@@ -366,7 +373,12 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: "#0F172A" }}>{order.musteri}</div>
+                      <div
+                        style={{ fontWeight: 800, fontSize: 15, color: "#0F172A", cursor: "pointer", textDecoration: "underline dotted" }}
+                        onClick={(e) => { e.stopPropagation(); setMusteriGecmisi({ ad: order.musteri, telefon: order.telefon }); }}
+                        >
+                        {order.musteri}
+                      </div>
                       <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{order.telefon}</div>
                     </div>
                     <div style={{ fontWeight: 800, fontSize: 18, color: "#059669" }}>₺{order.fiyat?.toLocaleString()}</div>
@@ -416,6 +428,7 @@ export default function App() {
       {smsOrder && <SmsModal order={smsOrder} ht={ht} firmaAd={isAdmin ? smsOrder.firmaAd || "" : firmaAd} onClose={() => setSmsOrder(null)} onSend={handleSms} />}
       {showHali && !isAdmin && <HaliModal turler={ht} onClose={() => setShowHali(false)} onSave={handleHaliTurleriSave} />}
       {showFirma && isAdmin && <FirmaModal token={user!.token} onClose={() => setShowFirma(false)} onSaved={yukle} />}
+      {musteriGecmisi && ( <MusteriGecmisi musteriAd={musteriGecmisi.ad} musteriTelefon={musteriGecmisi.telefon} orders={orders} ht={ht} onClose={() => setMusteriGecmisi(null)} onSiparisAc={(order) => { setSel(order); setMusteriGecmisi(null); }} />)}  
 
       <Toast msg={toast.msg} type={toast.type} />
     </div>
