@@ -211,13 +211,13 @@ export default function App() {
         <header style={{ background: "#0F172A", borderBottom: "1px solid #1E293B", padding: "0 20px", position: "sticky", top: 0, zIndex: 100 }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Yikanio Premium Logo */}
+          {/* Yıkanio Premium Logo */}
           <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
-            <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src="/logo.png" alt="Yıkanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
           <div>
             <div style={{ color: "#fff", fontWeight: 800, fontSize: "20px", lineHeight: 1, letterSpacing: "-0.5px" }}>
-              Yikan<span style={{ color: "#38BDF8" }}>io</span>
+              Yıkan<span style={{ color: "#38BDF8" }}>io</span>
             </div>
             <div style={{ color: "#94A3B8", fontSize: "11px", marginTop: "3px", fontWeight: 500, letterSpacing: "0.5px" }}>
               {isAdmin ? "👑 YÖNETİM PANELİ" : (firmaAd ? `🏢 ${firmaAd.toUpperCase()}` : user?.email)}
@@ -244,13 +244,13 @@ export default function App() {
         <div style={{ maxWidth: 1200, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {/* Yikanio Premium Logo */}
+              {/* Yıkanio Premium Logo */}
               <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
-                <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src="/logo.png" alt="Yıkanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
               <div>
                 <div style={{ color: "#0F172A", fontWeight: 800, fontSize: "20px", lineHeight: 1, letterSpacing: "-0.5px" }}>
-                  Yikan<span style={{ color: "#38BDF8" }}>io</span>
+                  Yıkan<span style={{ color: "#38BDF8" }}>io</span>
                 </div>
                 <div style={{ color: "#64748B", fontSize: "11px", marginTop: "3px", fontWeight: 500, letterSpacing: "0.5px" }}>
                   {isAdmin ? "👑 YÖNETİM PANELİ" : (firmaAd ? `🏢 ${firmaAd.toUpperCase()}` : user?.email)}
@@ -458,9 +458,9 @@ function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) =
       <div style={{ background: "#fff", borderRadius: 24, padding: 40, width: "100%", maxWidth: 400, boxShadow: "0 25px 50px rgba(0,0,0,0.3)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, overflow: "hidden", margin: "0 auto 12px" }}>
-            <img src="/logo.png" alt="Yikanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src="/logo.png" alt="Yıkanio Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}>Yikan<span style={{ color: "#38BDF8" }}>io</span></h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#0F172A" }}>Yıkan<span style={{ color: "#38BDF8" }}>io</span></h1>
           <p style={{ margin: "8px 0 0", color: "#64748B", fontSize: 14 }}>Halı Yıkama Yönetim Sistemi</p>
         </div>
         <div style={{ display: "grid", gap: 12 }}>
