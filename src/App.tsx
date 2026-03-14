@@ -15,6 +15,7 @@ import { FirmaModal } from "./components/FirmaModal";
 import { AdminPanel } from "./components/AdminPanel";
 import { MusteriGecmisi } from "./components/Musterigecmisi";
 import { useOrderActions } from "./hooks/useOrderActions";
+import { HesabimEkrani } from "./components/HesabimEkrani";
 
 // ─── RAPOR ────────────────────────────────────────────────────────────────────
 function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
@@ -251,7 +252,7 @@ export default function App() {
               </div>
             </div>
             <nav style={{ display: "flex", gap: 4 }} className="desktop-nav">
-              {[["siparisler", "📋 Siparişler"], ["raporlar", "📊 Raporlar"], ["fiyatlar", "🏷️ Fiyatlar"]].map(([k, l]) => (
+              {[["siparisler", "📋 Siparişler"], ["raporlar", "📊 Raporlar"], ["fiyatlar", "🏷️ Fiyatlar"], ["hesabim", "👤 Hesabım"]].map(([k, l]) => (
                 <button key={k} onClick={() => setActiveTab(k)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: activeTab === k ? "#EFF6FF" : "transparent", color: activeTab === k ? "#2563EB" : "#64748B", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>{l}</button>
               ))}
             </nav>
@@ -269,6 +270,12 @@ export default function App() {
         <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
           <button onClick={() => setShowHali(true)} style={{ width: "100%", padding: 16, borderRadius: 12, border: "none", background: "linear-gradient(135deg,#2563EB,#3B82F6)", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 16, fontFamily: "inherit" }}>🪄 Fiyat Listesini Düzenle</button>
         </div>
+      )}
+      {activeTab === "hesabim" && (
+        <HesabimEkrani
+          firma={firmalar.find((f) => f.id === firmaId) ?? null}
+          onYukle={yukle}
+        />
       )}
 
       {activeTab === "siparisler" && (
@@ -396,7 +403,7 @@ export default function App() {
 
       {/* Mobil Alt Nav */}
       <div className="bottom-nav" style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(10px)", borderTop: "1px solid #E2E8F0", padding: "12px 0 20px", justifyContent: "space-around", zIndex: 100 }}>
-        {[["siparisler", "📋", "Siparişler"], ["raporlar", "📊", "Raporlar"], ["fiyatlar", "🏷️", "Fiyatlar"]].map(([k, ic, l]) => (
+        {[["siparisler", "📋", "Siparişler"], ["raporlar", "📊", "Raporlar"], ["fiyatlar", "🏷️", "Fiyatlar"], ["hesabim", "👤", "Hesabım"]].map(([k, ic, l]) => (
           <button key={k} onClick={() => setActiveTab(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", flex: 1 }}>
             <span style={{ fontSize: 22 }}>{ic}</span>
             <span style={{ fontSize: 11, fontWeight: activeTab === k ? 700 : 500, color: activeTab === k ? "#2563EB" : "#64748B" }}>{l}</span>
@@ -444,7 +451,19 @@ export default function App() {
           firma={firmalar.find((f) => f.id === firmaId) ?? null}
           onClose={() => setSmsOrder(null)}
           onSend={(durum, mesaj, kanal) => handleSms(smsOrder, durum, mesaj, kanal)}
-          onError={(msg) => showToast(msg, "error")}
+          onError={(msg) => showToast(msg, "error")} onKrediDus={async () => {
+            if (!user || !firmaId) return;
+            const mevcutFirma = firmalar.find((f) => f.id === firmaId);
+            const mevcutKredi = mevcutFirma?.sms_kredisi ?? 0;
+            const yeniKredi = Math.max(0, mevcutKredi - 1);
+            await sbFetch(
+              `firmalar?id=eq.${firmaId}`,
+              { method: "PATCH", prefer: "return=minimal", body: JSON.stringify({ sms_kredisi: yeniKredi }) },
+              user.token
+            );
+            // Local state'i de güncelle
+            yukle();
+          }}
         />
       )}
 

@@ -40,6 +40,8 @@ export interface Firma {
   addonlar?: AddonTip[];
   netgsm_user?: string;
   netgsm_pass?: string;
+  netgsm_baslik?: string; 
+  sms_kredisi?: number;
   wa_api_key?: string;
   wa_phone_id?: string;
 }
@@ -72,7 +74,7 @@ export const PAKETLER: Record<PaketTip, {
     ozellikler: [
       'Starter özellikleri',
       'WhatsApp Business API',
-      'SMS (Netgsm — kendi hesabı)',
+      'SMS bildirimleri (merkezi havuz)',
       'PDF fatura',
       'Gelişmiş raporlar',
     ],
@@ -134,15 +136,17 @@ export function firmaOzellikVar(
     case 'wa_me':
       return true;
     case 'wa_api':
-    case 'sms':
     case 'pdf_fatura':
     case 'gelismis_raporlar':
       return paket === 'pro' || paket === 'enterprise';
+    case 'sms':
+      return true;
     case 'coklu_sube':
     case 'oncelikli_destek':
       return paket === 'enterprise';
     default:
       return false;
+      
   }
 }
 

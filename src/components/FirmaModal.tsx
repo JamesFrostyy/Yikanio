@@ -29,6 +29,8 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
   const [addonlar, setAddonlar] = useState<AddonTip[]>([]);
   const [netgsmUser, setNetgsmUser] = useState("");
   const [netgsmPass, setNetgsmPass] = useState("");
+  const [netgsmBaslik, setNetgsmBaslik] = useState("");   // ← YENİ
+  const [smsKredisi, setSmsKredisi] = useState<number>(50); // ← YENİ
   const [waApiKey, setWaApiKey] = useState("");
   const [waPhoneId, setWaPhoneId] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -50,6 +52,7 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
     setAd(""); setEmail(""); setAktif(true);
     setPaket("starter"); setAddonlar([]);
     setNetgsmUser(""); setNetgsmPass("");
+    setNetgsmBaslik(""); setSmsKredisi(50); // ← YENİ
     setWaApiKey(""); setWaPhoneId("");
     setIsEditing(false); setEditId(null); setErr("");
     setAktifTab("temel");
@@ -61,6 +64,8 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
     setAddonlar(f.addonlar || []);
     setNetgsmUser(f.netgsm_user || "");
     setNetgsmPass(f.netgsm_pass || "");
+    setNetgsmBaslik(f.netgsm_baslik || "");     // ← YENİ
+    setSmsKredisi(f.sms_kredisi ?? 50);          // ← YENİ
     setWaApiKey(f.wa_api_key || "");
     setWaPhoneId(f.wa_phone_id || "");
     setIsEditing(true); setEditId(f.id); setErr("");
@@ -76,6 +81,10 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
 
   const kaydet = async () => {
     if (!ad.trim()) { setErr("Firma adı zorunludur."); return; }
+    // SMS başlığı max 11 karakter kontrolü
+    if (netgsmBaslik && netgsmBaslik.length > 11) {
+      setErr("SMS başlığı en fazla 11 karakter olabilir."); return;
+    }
     setSaving(true); setErr("");
     try {
       const extra = {
@@ -83,6 +92,8 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
         addonlar: JSON.stringify(addonlar),
         netgsm_user: netgsmUser || undefined,
         netgsm_pass: netgsmPass || undefined,
+        netgsm_baslik: netgsmBaslik || undefined,   // ← YENİ
+        sms_kredisi: String(smsKredisi),             // ← YENİ
         wa_api_key: waApiKey || undefined,
         wa_phone_id: waPhoneId || undefined,
       };
@@ -115,7 +126,6 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
     onSaved();
   };
 
-  // Aylık toplam hesabı
   const toplamFiyat = () => {
     const paketFiyat = PAKETLER[paket].fiyat;
     const addonFiyat = addonlar.reduce((sum, a) => sum + (ADDONLAR[a]?.fiyat || 0), 0);
@@ -208,6 +218,27 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
                 ))}
               </div>
 
+              {/* SMS Kredisi */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  📱 SMS Kredisi
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
+                  <input
+                    style={inp}
+                    type="number"
+                    min={0}
+                    value={smsKredisi}
+                    onChange={(e) => setSmsKredisi(Number(e.target.value))}
+                    placeholder="SMS kredisi"
+                  />
+                  <div style={{ fontSize: 13, color: "#64748B", whiteSpace: "nowrap" }}>adet</div>
+                </div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
+                  Starter: 50 hediye · Ek kredi satışı yapıyorsanız buradan güncelleyin
+                </div>
+              </div>
+
               {/* Addon — sadece Pro+ */}
               {paket !== "starter" ? (
                 <>
@@ -264,19 +295,75 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
                   ⚠️ Entegrasyon ayarları Pro ve Enterprise paketlerde kullanılabilir.
                 </div>
               )}
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>📱 Netgsm SMS</div>
-              <input style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }} disabled={paket === "starter"} value={netgsmUser} onChange={(e) => setNetgsmUser(e.target.value)} placeholder="Netgsm kullanıcı adı" />
-              <input style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }} disabled={paket === "starter"} type="password" value={netgsmPass} onChange={(e) => setNetgsmPass(e.target.value)} placeholder="Netgsm şifre" />
 
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginTop: 4 }}>💬 WhatsApp Business API</div>
-              <input style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }} disabled={paket === "starter"} value={waApiKey} onChange={(e) => setWaApiKey(e.target.value)} placeholder="Meta API Key" />
-              <input style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }} disabled={paket === "starter"} value={waPhoneId} onChange={(e) => setWaPhoneId(e.target.value)} placeholder="WhatsApp Phone ID" />
+              {/* Netgsm SMS */}
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>📱 Netgsm SMS</div>
+              <input
+                style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }}
+                disabled={paket === "starter"}
+                value={netgsmUser}
+                onChange={(e) => setNetgsmUser(e.target.value)}
+                placeholder="Netgsm kullanıcı adı"
+              />
+              <input
+                style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }}
+                disabled={paket === "starter"}
+                type="password"
+                value={netgsmPass}
+                onChange={(e) => setNetgsmPass(e.target.value)}
+                placeholder="Netgsm şifre"
+              />
+
+              {/* SMS Başlığı — tüm paketlerde ayarlanabilir */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 6 }}>
+                  🏷️ SMS Başlığı (Gönderen Adı)
+                </div>
+                <input
+                  style={inp}
+                  value={netgsmBaslik}
+                  onChange={(e) => setNetgsmBaslik(e.target.value.slice(0, 11))}
+                  placeholder="Max 11 karakter (örn: ALPHALIYIK)"
+                  maxLength={11}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "#94A3B8" }}>
+                    Müşteri SMS'i bu isimden alır. Türkçe karakter kullanmayın.
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: netgsmBaslik.length >= 10 ? "#DC2626" : "#94A3B8" }}>
+                    {netgsmBaslik.length}/11
+                  </div>
+                </div>
+              </div>
+
+              {/* WhatsApp Business API */}
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginTop: 4 }}>
+                💬 WhatsApp Business API
+              </div>
+              <input
+                style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }}
+                disabled={paket === "starter"}
+                value={waApiKey}
+                onChange={(e) => setWaApiKey(e.target.value)}
+                placeholder="Meta API Key"
+              />
+              <input
+                style={{ ...inp, opacity: paket === "starter" ? 0.5 : 1 }}
+                disabled={paket === "starter"}
+                value={waPhoneId}
+                onChange={(e) => setWaPhoneId(e.target.value)}
+                placeholder="WhatsApp Phone ID"
+              />
             </div>
           )}
 
           {err && <div style={{ color: "#DC2626", fontSize: 12, marginTop: 12 }}>❌ {err}</div>}
 
-          <button onClick={kaydet} disabled={saving} style={{ marginTop: 14, width: "100%", padding: 12, borderRadius: 10, border: "none", background: isEditing ? "linear-gradient(135deg,#059669,#10B981)" : "linear-gradient(135deg,#1E40AF,#3B82F6)", color: "#fff", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
+          <button
+            onClick={kaydet}
+            disabled={saving}
+            style={{ marginTop: 14, width: "100%", padding: 12, borderRadius: 10, border: "none", background: isEditing ? "linear-gradient(135deg,#059669,#10B981)" : "linear-gradient(135deg,#1E40AF,#3B82F6)", color: "#fff", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}
+          >
             {saving ? "İşleniyor..." : isEditing ? "Değişiklikleri Kaydet" : "+ Firma Ekle & Davet Gönder"}
           </button>
         </div>
@@ -287,7 +374,9 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
           <div style={{ textAlign: "center", padding: 20, color: "#9CA3AF" }}>Yükleniyor...</div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
-            {firmalar.length === 0 && <div style={{ textAlign: "center", padding: 20, color: "#9CA3AF", fontSize: 14 }}>Henüz firma yok</div>}
+            {firmalar.length === 0 && (
+              <div style={{ textAlign: "center", padding: 20, color: "#9CA3AF", fontSize: 14 }}>Henüz firma yok</div>
+            )}
             {firmalar.map((f) => {
               const p = PAKETLER[f.paket || "starter"];
               const firmaAddonlar = (f.addonlar || []) as AddonTip[];
@@ -297,13 +386,34 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         🏢 {f.ad}
-                        {/* Paket badge */}
                         <span style={{ fontSize: 10, background: p.bg, color: p.renk, padding: "2px 8px", borderRadius: 20, fontWeight: 700, border: `1px solid ${p.renk}20` }}>
                           {p.ad}
                         </span>
-                        {!f.aktif && <span style={{ fontSize: 10, background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>Pasif</span>}
+                        {!f.aktif && (
+                          <span style={{ fontSize: 10, background: "#FEE2E2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>Pasif</span>
+                        )}
                       </div>
                       <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>{f.email}</div>
+
+                      {/* SMS Başlığı + Kredi */}
+                      <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                        {f.netgsm_baslik && (
+                          <span style={{ fontSize: 10, background: "#F0F9FF", color: "#0284C7", padding: "2px 7px", borderRadius: 20, border: "1px solid #BAE6FD", fontWeight: 600 }}>
+                            📱 {f.netgsm_baslik}
+                          </span>
+                        )}
+                        <span style={{
+                          fontSize: 10,
+                          background: (f.sms_kredisi ?? 0) > 10 ? "#F0FDF4" : "#FEF2F2",
+                          color: (f.sms_kredisi ?? 0) > 10 ? "#059669" : "#DC2626",
+                          padding: "2px 7px", borderRadius: 20,
+                          border: `1px solid ${(f.sms_kredisi ?? 0) > 10 ? "#BBF7D0" : "#FECACA"}`,
+                          fontWeight: 700,
+                        }}>
+                          💬 {f.sms_kredisi ?? 0} SMS
+                        </span>
+                      </div>
+
                       {/* Addon badges */}
                       {firmaAddonlar.length > 0 && (
                         <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>

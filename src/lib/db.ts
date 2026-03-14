@@ -55,35 +55,65 @@ export async function dbFirmalariGetir(token: string): Promise<Firma[]> {
     addonlar: Array.isArray(f.addonlar) ? (f.addonlar as Firma["addonlar"]) : typeof f.addonlar === "string" ? JSON.parse(f.addonlar) : [],
     netgsm_user: f.netgsm_user as string | undefined,
     netgsm_pass: f.netgsm_pass as string | undefined,
+    netgsm_baslik: f.netgsm_baslik as string | undefined,       
+    sms_kredisi: f.sms_kredisi as number | undefined,
     wa_api_key: f.wa_api_key as string | undefined,
     wa_phone_id: f.wa_phone_id as string | undefined,
   }));
 }
 
-export async function dbFirmaEkle(token: string, ad: string, email: string, extra?: Record<string, string | undefined>): Promise<void> {
+export async function dbFirmaEkle(
+  token: string,
+  ad: string,
+  email: string,
+  extra?: Record<string, string | undefined>
+): Promise<void> {
   const body: Record<string, unknown> = { ad, email, aktif: true };
   if (extra) {
     if (extra.paket) body.paket = extra.paket;
-    if (extra.addonlar) { try { body.addonlar = JSON.parse(extra.addonlar); } catch { body.addonlar = []; } }
+    if (extra.addonlar) {
+      try { body.addonlar = JSON.parse(extra.addonlar); }
+      catch { body.addonlar = []; }
+    }
     if (extra.netgsm_user) body.netgsm_user = extra.netgsm_user;
     if (extra.netgsm_pass) body.netgsm_pass = extra.netgsm_pass;
+    if (extra.netgsm_baslik) body.netgsm_baslik = extra.netgsm_baslik;
     if (extra.wa_api_key) body.wa_api_key = extra.wa_api_key;
     if (extra.wa_phone_id) body.wa_phone_id = extra.wa_phone_id;
+    // ✅ YENİ firma için SMS kredisi
+    body.sms_kredisi = extra.sms_kredisi ? Number(extra.sms_kredisi) : 50;
   }
   await sbFetch("firmalar", { method: "POST", body: JSON.stringify(body) }, token);
 }
-
-export async function dbFirmaGuncelle(token: string, id: string, ad: string, aktif: boolean, extra?: Record<string, string | undefined>): Promise<void> {
+export async function dbFirmaGuncelle(
+  token: string,
+  id: string,
+  ad: string,
+  aktif: boolean,
+  extra?: Record<string, string | undefined>
+): Promise<void> {
   const body: Record<string, unknown> = { ad, aktif };
   if (extra) {
     if (extra.paket) body.paket = extra.paket;
-    if (extra.addonlar !== undefined) { try { body.addonlar = JSON.parse(extra.addonlar); } catch { body.addonlar = []; } }
+    if (extra.addonlar !== undefined) {
+      try { body.addonlar = JSON.parse(extra.addonlar); }
+      catch { body.addonlar = []; }
+    }
     body.netgsm_user = extra.netgsm_user || null;
     body.netgsm_pass = extra.netgsm_pass || null;
+    body.netgsm_baslik = extra.netgsm_baslik || null;  // ← zaten var mı kontrol edin
     body.wa_api_key = extra.wa_api_key || null;
     body.wa_phone_id = extra.wa_phone_id || null;
+    // ✅ SMS KREDİSİ — string'den number'a çevir
+    if (extra.sms_kredisi !== undefined) {
+      body.sms_kredisi = Number(extra.sms_kredisi);
+    }
   }
-  await sbFetch(`firmalar?id=eq.${id}`, { method: "PATCH", prefer: "return=minimal", body: JSON.stringify(body) }, token);
+  await sbFetch(
+    `firmalar?id=eq.${id}`,
+    { method: "PATCH", prefer: "return=minimal", body: JSON.stringify(body) },
+    token
+  );
 }
 
 export async function dbFirmaSil(token: string, id: string): Promise<void> {
