@@ -35,7 +35,6 @@ export function useOrders(token: string, isAdmin: boolean, userEmail?: string) {
 
       setOrders(siparisler);
 
-      // Admin için tüm firmalar, firma kullanıcısı için kendi firması
       if (isAdmin) {
         setFirmalar(firms);
       } else if (firmaSonuc?.[0]) {
@@ -53,6 +52,8 @@ export function useOrders(token: string, isAdmin: boolean, userEmail?: string) {
             : [],
           netgsm_user: f.netgsm_user as string | undefined,
           netgsm_pass: f.netgsm_pass as string | undefined,
+          netgsm_baslik: f.netgsm_baslik as string | undefined,  // ← EKLENDİ
+          sms_kredisi: f.sms_kredisi as number | undefined,       // ← EKLENDİ
           wa_api_key: f.wa_api_key as string | undefined,
           wa_phone_id: f.wa_phone_id as string | undefined,
         }]);
