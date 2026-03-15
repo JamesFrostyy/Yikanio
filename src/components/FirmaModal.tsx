@@ -117,6 +117,14 @@ export function FirmaModal({ token, onClose, onSaved }: FirmaModalProps) {
     setIsEditing(true); setEditId(f.id); setErr("");
     setAktifTab("temel");
   };
+  // Hesap durumu değişince aktifliği otomatik ayarla
+    useEffect(() => {
+    if (hesapDurum === "aktif" || hesapDurum === "demo" || hesapDurum === "gecikme") {
+    setAktif(true);
+    } else if (hesapDurum === "pasif" || hesapDurum === "iptal") {
+    setAktif(false);
+    }
+    }, [hesapDurum]);
 
   const toggleAddon = (addon: AddonTip) => {
     setAddonlar((prev) => prev.includes(addon) ? prev.filter((a) => a !== addon) : [...prev, addon]);

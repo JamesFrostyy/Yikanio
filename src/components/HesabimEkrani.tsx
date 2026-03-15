@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { Firma, PAKETLER, PaketTip } from "../types";
+import { sbFetch } from "../lib/supabase";
 
 interface HesabimEkraniProps {
   firma: Firma | null | undefined;
+  token: string;
   onYukle: () => void;
 }
 
-const HESAP_DURUM_CFG: Record<string, { label: string; color: string; bg: string; border: string; icon: string; aciklama: string }> = {
-  demo:    { label: "Demo",         color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE", icon: "🧪", aciklama: "Deneme süreniz aktif" },
-  aktif:   { label: "Aktif",        color: "#059669", bg: "#F0FDF4", border: "#BBF7D0", icon: "✅", aciklama: "Aboneliğiniz aktif" },
+const HESAP_DURUM_CFG: Record<string, {
+  label: string; color: string; bg: string; border: string; icon: string; aciklama: string
+}> = {
+  demo:    { label: "Demo",            color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE", icon: "🧪", aciklama: "Deneme süreniz aktif" },
+  aktif:   { label: "Aktif",           color: "#059669", bg: "#F0FDF4", border: "#BBF7D0", icon: "✅", aciklama: "Aboneliğiniz aktif" },
   gecikme: { label: "Ödeme Gecikmeli", color: "#D97706", bg: "#FFF7ED", border: "#FDE68A", icon: "⚠️", aciklama: "Ödemeniz gecikmiş" },
-  pasif:   { label: "Hesap Pasif",  color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: "🔴", aciklama: "Hesabınız donduruldu" },
-  iptal:   { label: "İptal",        color: "#6B7280", bg: "#F3F4F6", border: "#E5E7EB", icon: "❌", aciklama: "Abonelik iptal edildi" },
+  pasif:   { label: "Hesap Pasif",     color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: "🔴", aciklama: "Hesabınız donduruldu" },
+  iptal:   { label: "İptal",           color: "#6B7280", bg: "#F3F4F6", border: "#E5E7EB", icon: "❌", aciklama: "Abonelik iptal edildi" },
 };
 
 function gunFarki(tarih?: string): number {
@@ -24,7 +28,15 @@ function tarihFormat(iso?: string): string {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
+// Bugünden N ay sonrasını ISO string olarak döner
+function birAySonra(baslangic?: string): string {
+  const bas = baslangic ? new Date(baslangic) : new Date();
+  const sonraki = new Date(bas);
+  sonraki.setMonth(sonraki.getMonth() + 1);
+  return sonraki.toISOString();
+}
+
+export function HesabimEkrani({ firma, token, onYukle }: HesabimEkraniProps) {
   const [showOdeme, setShowOdeme] = useState(false);
 
   if (!firma) {
@@ -40,12 +52,17 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
   const durumCfg = HESAP_DURUM_CFG[firma.hesap_durum || "demo"];
   const smsKredisi = firma.sms_kredisi ?? 0;
   const smsYuzde = Math.min(100, Math.round((smsKredisi / 50) * 100));
-
   const demKalan = gunFarki(firma.demo_bitis);
   const odemeKalan = gunFarki(firma.sonraki_odeme_tarihi);
-
   const paketSirasi: PaketTip[] = ["starter", "pro", "enterprise"];
   const mevcutIndex = paketSirasi.indexOf(paketKey);
+
+  // Yükseltme yapılabilecek paketler (mevcut dahil, aşağısı değil)
+  // Demo ise tüm paketler seçilebilir
+  // Aktif ise sadece mevcut ve üzeri
+  const secilebilenPaketler = firma.hesap_durum === "demo"
+    ? paketSirasi
+    : paketSirasi.filter((_, i) => i >= mevcutIndex);
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "24px 20px 100px", fontFamily: "'Poppins', sans-serif" }}>
@@ -65,7 +82,9 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
         </div>
         {firma.hesap_durum === "demo" && firma.demo_bitis && (
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 28, fontWeight: 800, color: demKalan <= 3 ? "#DC2626" : durumCfg.color }}>{Math.max(0, demKalan)}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: demKalan <= 3 ? "#DC2626" : durumCfg.color }}>
+              {Math.max(0, demKalan)}
+            </div>
             <div style={{ fontSize: 11, color: "#64748B" }}>gün kaldı</div>
           </div>
         )}
@@ -93,8 +112,6 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
             {paket.ad}
           </span>
         </div>
-
-        {/* Aktif Paket */}
         <div style={{ background: "linear-gradient(135deg,#1E40AF,#3B82F6)", borderRadius: 12, padding: "14px 18px", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 11, color: "#BFDBFE", fontWeight: 700, textTransform: "uppercase" }}>Aktif Paket</div>
@@ -121,7 +138,6 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{tarihFormat(firma.demo_bitis)}</div>
             </div>
           </div>
-          {/* Progress bar */}
           {firma.demo_baslangic && firma.demo_bitis && (() => {
             const toplam = new Date(firma.demo_bitis).getTime() - new Date(firma.demo_baslangic).getTime();
             const gecen = Date.now() - new Date(firma.demo_baslangic).getTime();
@@ -141,7 +157,7 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
             );
           })()}
           <button onClick={() => setShowOdeme(true)} style={{ marginTop: 16, width: "100%", padding: 14, borderRadius: 12, border: "none", background: "linear-gradient(135deg,#7C3AED,#A78BFA)", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 15, fontFamily: "inherit" }}>
-            🚀 Paketi Satın Al → Aboneliğe Geç
+            🚀 Abonelik Satın Al — İstediğin Paketten Başla
           </button>
         </div>
       )}
@@ -183,6 +199,13 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Paket Yükseltme — sadece üst paket varsa göster */}
+          {mevcutIndex < paketSirasi.length - 1 && (
+            <button onClick={() => setShowOdeme(true)} style={{ marginTop: 14, width: "100%", padding: 12, borderRadius: 10, border: "1.5px dashed #CBD5E1", background: "#F8FAFC", color: "#475569", cursor: "pointer", fontWeight: 600, fontSize: 14, fontFamily: "inherit" }}>
+              🚀 Paketi Yükselt
+            </button>
           )}
         </div>
       )}
@@ -229,34 +252,6 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
         </div>
       </div>
 
-      {/* Yükseltme Önerisi */}
-      {mevcutIndex < paketSirasi.length - 1 && (
-        <div style={{ background: "#F8FAFC", borderRadius: 16, padding: 20, border: "1.5px dashed #CBD5E1", marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", marginBottom: 12 }}>🚀 Daha Fazlası İçin</div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {paketSirasi.slice(mevcutIndex + 1).map((key) => {
-              const p = PAKETLER[key];
-              return (
-                <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "#fff", borderRadius: 12, border: `1px solid ${p.renk}30` }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: p.renk }}>{p.ad}</div>
-                    <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                      {p.ozellikler.filter((o) => !paket.ozellikler.includes(o)).slice(0, 2).join(" · ")}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}>₺{p.fiyat.toLocaleString()}</div>
-                    <button onClick={() => setShowOdeme(true)} style={{ marginTop: 6, padding: "6px 14px", borderRadius: 8, border: "none", background: p.renk, color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>
-                      Yükselt
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* İletişim */}
       <div style={{ textAlign: "center", padding: "16px", background: "#F8FAFC", borderRadius: 12, border: "1px solid #E2E8F0", fontSize: 13, color: "#64748B" }}>
         Paket değişikliği, ödeme veya destek için:
@@ -267,11 +262,12 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
       {showOdeme && (
         <OdemeModal
           firma={firma}
-          paket={paket}
-          paketKey={paketKey}
-          paketSirasi={paketSirasi}
-          mevcutIndex={mevcutIndex}
+          token={token}
+          mevcutPaket={paketKey}
+          mevcutDurum={firma.hesap_durum || "demo"}
+          secilebilenPaketler={secilebilenPaketler}
           onClose={() => setShowOdeme(false)}
+          onBasarili={() => { setShowOdeme(false); onYukle(); }}
         />
       )}
     </div>
@@ -281,33 +277,78 @@ export function HesabimEkrani({ firma, onYukle }: HesabimEkraniProps) {
 // ─── ÖDEME MODALI ────────────────────────────────────────────────────────────
 interface OdemeModalProps {
   firma: Firma;
-  paket: typeof PAKETLER[PaketTip];
-  paketKey: PaketTip;
-  paketSirasi: PaketTip[];
-  mevcutIndex: number;
+  token: string;
+  mevcutPaket: PaketTip;
+  mevcutDurum: string;
+  secilebilenPaketler: PaketTip[];
   onClose: () => void;
+  onBasarili: () => void;
 }
 
-function OdemeModal({ firma, paket, paketKey, paketSirasi, mevcutIndex, onClose }: OdemeModalProps) {
-  const [secilenPaket, setSecilenPaket] = useState<PaketTip>(
-    mevcutIndex < paketSirasi.length - 1 ? paketSirasi[mevcutIndex + 1] : paketKey
-  );
+function OdemeModal({
+  firma, token, mevcutPaket, mevcutDurum, secilebilenPaketler, onClose, onBasarili
+}: OdemeModalProps) {
+  const paketSirasi: PaketTip[] = ["starter", "pro", "enterprise"];
+  const mevcutIndex = paketSirasi.indexOf(mevcutPaket);
+
+  // Demo ise en uygun (Starter), aktifse bir üst paket varsayılan
+  const varsayilanPaket = mevcutDurum === "demo"
+    ? "starter"
+    : (paketSirasi[mevcutIndex + 1] || mevcutPaket) as PaketTip;
+
+  const [secilenPaket, setSecilenPaket] = useState<PaketTip>(varsayilanPaket);
   const [yukleniyor, setYukleniyor] = useState(false);
+
   const secilenPaketBilgi = PAKETLER[secilenPaket];
 
-  const shopierOdemeBaslat = () => {
+  // Shopier linkleri — her paket için kendi linkinizi girin
+  const SHOPIER_LINKLER: Record<PaketTip, string> = {
+    starter:    "https://www.shopier.com/yikanio-starter",
+    pro:        "https://www.shopier.com/yikanio-pro",
+    enterprise: "https://www.shopier.com/yikanio-enterprise",
+  };
+
+  const shopierOdemeBaslat = async () => {
     setYukleniyor(true);
-    // Shopier ödeme linki — her paket için ayrı ürün linki tanımlanacak
-    const SHOPIER_LINKLER: Record<PaketTip, string> = {
-      starter:    "https://www.shopier.com/yikanio-starter",
-      pro:        "https://www.shopier.com/yikanio-pro",
-      enterprise: "https://www.shopier.com/yikanio-enterprise",
-    };
-    const link = SHOPIER_LINKLER[secilenPaket];
-    // Müşteri bilgilerini URL parametresi olarak ekle (Shopier destekliyor)
-    const url = `${link}?email=${encodeURIComponent(firma.email)}&name=${encodeURIComponent(firma.yetkili_ad || firma.ad)}`;
-    window.open(url, "_blank");
-    setYukleniyor(false);
+    try {
+      // 4 numara: Abonelik tarihleri otomatik hesapla
+      const bugun = new Date().toISOString();
+      const sonrakiOdeme = birAySonra(bugun);
+
+      // Supabase'de firma bilgilerini güncelle
+      // (Shopier'dan ödeme onayı gelince admin manuel onaylayacak — webhook sonrası otomatik yapılacak)
+      // Şimdilik Shopier sayfasını aç, onay sonrası admin aktif edecek
+      // Tarihleri kaydet ki admin onaylayınca kullanılsın
+      await sbFetch(
+        `firmalar?id=eq.${firma.id}`,
+        {
+          method: "PATCH",
+          prefer: "return=minimal",
+          body: JSON.stringify({
+            paket: secilenPaket,
+            // Tarihler — admin onayına kadar bekler, hesap_durum değişmez
+            abonelik_baslangic: bugun,
+            son_odeme_tarihi: bugun,
+            sonraki_odeme_tarihi: sonrakiOdeme,
+          }),
+        },
+        token
+      );
+
+      // Shopier sayfasını aç
+      const link = SHOPIER_LINKLER[secilenPaket];
+      const url = `${link}?email=${encodeURIComponent(firma.email)}&name=${encodeURIComponent(firma.yetkili_ad || firma.ad)}`;
+      window.open(url, "_blank");
+
+      setYukleniyor(false);
+
+      // Kullanıcıya bilgi ver
+      alert(`Shopier ödeme sayfası açıldı.\n\nÖdemeniz onaylandıktan sonra hesabınız aktif edilecektir.\n\nBilgi: info@yikanio.com`);
+      onBasarili();
+    } catch (e) {
+      setYukleniyor(false);
+      alert("Bir hata oluştu, lütfen tekrar deneyin.");
+    }
   };
 
   return (
@@ -326,32 +367,43 @@ function OdemeModal({ firma, paket, paketKey, paketSirasi, mevcutIndex, onClose 
         </div>
 
         {/* Paket Seçici */}
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", marginBottom: 10, textTransform: "uppercase" }}>Paket Seçin</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", marginBottom: 10, textTransform: "uppercase" }}>
+          {mevcutDurum === "demo" ? "Başlamak istediğiniz paketi seçin" : "Yükseltmek istediğiniz paketi seçin"}
+        </div>
         <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
           {paketSirasi.map((key) => {
             const p = PAKETLER[key];
-            const mevcutMu = key === paketKey;
-            const secili = key === secilenPaket;
+            const seciliMi = key === secilenPaket;
+            const mevcutMu = key === mevcutPaket && mevcutDurum !== "demo";
+            // Demo değilse ve bu paket mevcut paketin altındaysa kilitli
+            const kilitli = mevcutDurum !== "demo" && paketSirasi.indexOf(key) < mevcutIndex;
+
             return (
-              <button key={key} onClick={() => !mevcutMu && setSecilenPaket(key)} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "14px 16px", borderRadius: 14, textAlign: "left",
-                border: `2px solid ${secili ? p.renk : "#E2E8F0"}`,
-                background: secili ? p.bg : mevcutMu ? "#F8FAFC" : "#fff",
-                cursor: mevcutMu ? "not-allowed" : "pointer",
-                opacity: mevcutMu ? 0.5 : 1, fontFamily: "inherit",
-              }}>
+              <button
+                key={key}
+                onClick={() => !mevcutMu && !kilitli && setSecilenPaket(key)}
+                style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "14px 16px", borderRadius: 14, textAlign: "left",
+                  border: `2px solid ${seciliMi ? p.renk : "#E2E8F0"}`,
+                  background: seciliMi ? p.bg : (mevcutMu || kilitli) ? "#F8FAFC" : "#fff",
+                  cursor: (mevcutMu || kilitli) ? "not-allowed" : "pointer",
+                  opacity: kilitli ? 0.4 : 1,
+                  fontFamily: "inherit", transition: "all 0.2s",
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: secili ? p.renk : "#334155" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: seciliMi ? p.renk : kilitli ? "#94A3B8" : "#334155", display: "flex", alignItems: "center", gap: 8 }}>
                     {p.ad}
-                    {mevcutMu && <span style={{ marginLeft: 8, fontSize: 11, color: "#94A3B8" }}>(Mevcut paket)</span>}
+                    {mevcutMu && <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>(Mevcut paket)</span>}
+                    {kilitli && <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>🔒 İndirim yapılamaz</span>}
                   </div>
                   <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
                     {p.ozellikler.slice(0, 2).join(" · ")}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: secili ? p.renk : "#0F172A" }}>₺{p.fiyat.toLocaleString()}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: seciliMi ? p.renk : "#0F172A" }}>₺{p.fiyat.toLocaleString()}</div>
                   <div style={{ fontSize: 11, color: "#94A3B8" }}>/ay</div>
                 </div>
               </button>
@@ -359,58 +411,60 @@ function OdemeModal({ firma, paket, paketKey, paketSirasi, mevcutIndex, onClose 
           })}
         </div>
 
-        {/* Seçilen Paket Özeti */}
+        {/* Otomatik Tarih Bilgisi */}
+        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#059669", marginBottom: 6 }}>📅 Abonelik Tarihleri (Otomatik)</div>
+          <div style={{ fontSize: 13, color: "#334155" }}>
+            Abonelik başlangıcı: <strong>{tarihFormat(new Date().toISOString())}</strong>
+          </div>
+          <div style={{ fontSize: 13, color: "#334155", marginTop: 4 }}>
+            Sonraki ödeme: <strong>{tarihFormat(birAySonra(new Date().toISOString()))}</strong>
+          </div>
+        </div>
+
+        {/* Sipariş Özeti */}
         <div style={{ background: "linear-gradient(135deg,#0F172A,#1E293B)", borderRadius: 16, padding: 20, marginBottom: 20, color: "#fff" }}>
           <div style={{ fontSize: 12, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase", marginBottom: 8 }}>Sipariş Özeti</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700 }}>Yıkanio {secilenPaketBilgi.ad}</div>
-              <div style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>Aylık abonelik · Otomatik yenileme yok</div>
+              <div style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>Aylık abonelik</div>
             </div>
             <div style={{ fontSize: 24, fontWeight: 800 }}>₺{secilenPaketBilgi.fiyat.toLocaleString()}</div>
           </div>
-          <div style={{ borderTop: "1px solid #334155", paddingTop: 12, display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <span style={{ color: "#94A3B8" }}>Firma</span>
-            <span style={{ color: "#fff", fontWeight: 600 }}>{firma.ad}</span>
-          </div>
-          {firma.yetkili_ad && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 6 }}>
-              <span style={{ color: "#94A3B8" }}>Yetkili</span>
-              <span style={{ color: "#fff", fontWeight: 600 }}>{firma.yetkili_ad}</span>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 6 }}>
-            <span style={{ color: "#94A3B8" }}>Email</span>
-            <span style={{ color: "#fff", fontWeight: 600 }}>{firma.email}</span>
+          <div style={{ borderTop: "1px solid #334155", paddingTop: 10, fontSize: 13, color: "#94A3B8" }}>
+            {firma.ad} · {firma.email}
           </div>
         </div>
 
-        {/* Güvenlik Bilgisi */}
+        {/* Güvenlik */}
         <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
-          {["🔒 256-bit SSL şifreleme", "💳 Tüm kartlar kabul", "🚫 Taahhüt yok"].map((item) => (
-            <div key={item} style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 4 }}>{item}</div>
+          {["🔒 SSL şifreleme", "💳 Tüm kartlar", "🚫 Taahhüt yok"].map((item) => (
+            <div key={item} style={{ fontSize: 12, color: "#64748B" }}>{item}</div>
           ))}
         </div>
 
         {/* Ödeme Butonu */}
-        <button onClick={shopierOdemeBaslat} disabled={yukleniyor} style={{
-          width: "100%", padding: "18px", borderRadius: 14, border: "none",
-          background: yukleniyor ? "#E2E8F0" : "linear-gradient(135deg,#2563EB,#3B82F6)",
-          color: yukleniyor ? "#94A3B8" : "#fff", cursor: yukleniyor ? "not-allowed" : "pointer",
-          fontWeight: 800, fontSize: 16, fontFamily: "inherit",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-        }}>
+        <button
+          onClick={shopierOdemeBaslat}
+          disabled={yukleniyor || secilenPaket === mevcutPaket && mevcutDurum !== "demo"}
+          style={{
+            width: "100%", padding: "18px", borderRadius: 14, border: "none",
+            background: yukleniyor ? "#E2E8F0" : "linear-gradient(135deg,#2563EB,#3B82F6)",
+            color: yukleniyor ? "#94A3B8" : "#fff",
+            cursor: yukleniyor ? "not-allowed" : "pointer",
+            fontWeight: 800, fontSize: 16, fontFamily: "inherit",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+          }}
+        >
           {yukleniyor ? "Yönlendiriliyor..." : (
-            <>
-              <span style={{ fontSize: 20 }}>💳</span>
-              Shopier ile Güvenli Öde — ₺{secilenPaketBilgi.fiyat.toLocaleString()}
-            </>
+            <><span style={{ fontSize: 20 }}>💳</span> Shopier ile Güvenli Öde — ₺{secilenPaketBilgi.fiyat.toLocaleString()}</>
           )}
         </button>
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#94A3B8", marginTop: 14, marginBottom: 0, lineHeight: 1.6 }}>
-          Ödeme tamamlandıktan sonra hesabınız otomatik aktif edilecektir.<br />
-          Sorun yaşarsanız <a href="mailto:info@yikanio.com" style={{ color: "#2563EB" }}>info@yikanio.com</a> adresine yazın.
+          Ödeme onayından sonra hesabınız 24 saat içinde aktif edilir.<br />
+          Sorun için: <a href="mailto:info@yikanio.com" style={{ color: "#2563EB" }}>info@yikanio.com</a>
         </p>
       </div>
     </div>

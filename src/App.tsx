@@ -125,10 +125,8 @@ function RaporEkrani({ orders, ht }: { orders: Siparis[]; ht: HaliTuru[] }) {
 export default function App() {
   const { authState, accessToken, user, isAdmin, login, logout, setPassword } = useAuth();
 
-  const { orders, setOrders, firmalar, ht, setHt, firmaId, firmaAd, loading, err, yukle } = useOrders(
-    user?.token || "", isAdmin, user?.email || ""
-  );
-
+  const { orders, setOrders, firmalar, ht, setHt, firmaId, firmaAd, loading, err, yukle, hesapAktif } = useOrders(
+  user?.token || "", isAdmin, user?.email || "");
   const [sel, setSel] = useState<Siparis | null>(null);
   const [filterStatus, setFilterStatus] = useState("Tümü");
   const [filterFirma, setFilterFirma] = useState("Tümü");
@@ -165,6 +163,7 @@ export default function App() {
     ht,
     firmaId,
     isAdmin,
+    hesapAktif,
     showToast,
   });
 
@@ -258,7 +257,13 @@ export default function App() {
             </nav>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => { setEditing(null); setShowOrder(true); }} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#2563EB,#3B82F6)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Sipariş</button>
+            <button
+                onClick={() => {
+                  if (!hesapAktif) { showToast("Hesabınız aktif değil. Yöneticinizle iletişime geçin.", "error"); return; }
+                  setEditing(null); setShowOrder(true);
+                }}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: hesapAktif ? "linear-gradient(135deg,#2563EB,#3B82F6)" : "#E2E8F0", color: hesapAktif ? "#fff" : "#94A3B8", fontSize: 13, fontWeight: 700, cursor: hesapAktif ? "pointer" : "not-allowed", fontFamily: "inherit" }}
+              >+ Sipariş</button>
             <button onClick={logout} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #E2E8F0", background: "#fff", color: "#64748B", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Çıkış</button>
           </div>
         </div>
@@ -274,12 +279,29 @@ export default function App() {
       {activeTab === "hesabim" && (
         <HesabimEkrani
           firma={firmalar.find((f) => f.id === firmaId) ?? null}
+          token={user!.token}
           onYukle={yukle}
         />
       )}
 
       {activeTab === "siparisler" && (
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px 100px" }}>
+
+          {/* Hesap Pasif Uyarısı */}
+          {!isAdmin && !hesapAktif && (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "14px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12, fontFamily: "'Poppins', sans-serif" }}>
+              <span style={{ fontSize: 24 }}>🔴</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#DC2626" }}>Hesabınız Aktif Değil</div>
+                <div style={{ fontSize: 13, color: "#991B1B", marginTop: 2 }}>
+                  Sipariş girişi geçici olarak kısıtlandı.
+                  <button onClick={() => setActiveTab("hesabim")} style={{ marginLeft: 8, color: "#2563EB", background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit", textDecoration: "underline" }}>
+                    Hesabım →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Arama & Filtre */}
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Müşteri, telefon veya sipariş no ara..." style={{ flex: 1, minWidth: 200, padding: "10px 16px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, fontFamily: "inherit", outline: "none" }} />
@@ -409,8 +431,11 @@ export default function App() {
             <span style={{ fontSize: 11, fontWeight: activeTab === k ? 700 : 500, color: activeTab === k ? "#2563EB" : "#64748B" }}>{l}</span>
           </button>
         ))}
-        <button onClick={() => { setEditing(null); setShowOrder(true); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", flex: 1 }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#3B82F6,#2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginTop: -22, boxShadow: "0 8px 16px rgba(37,99,235,0.3)", color: "#fff" }}>➕</div>
+        <button onClick={() => {
+          if (!hesapAktif) { showToast("Hesabınız aktif değil.", "error"); return; }
+          setEditing(null); setShowOrder(true);
+        }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: hesapAktif ? "pointer" : "not-allowed", fontFamily: "inherit", flex: 1 }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: hesapAktif ? "linear-gradient(135deg,#3B82F6,#2563EB)" : "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginTop: -22, boxShadow: hesapAktif ? "0 8px 16px rgba(37,99,235,0.3)" : "none", color: hesapAktif ? "#fff" : "#94A3B8" }}>➕</div>
           <span style={{ fontSize: 11, color: "#64748B" }}>Ekle</span>
         </button>
       </div>

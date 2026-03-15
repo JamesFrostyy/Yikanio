@@ -11,6 +11,7 @@ export function useOrders(token: string, isAdmin: boolean, userEmail?: string) {
   const [firmaAd, setFirmaAd] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  
 
   const yukle = useCallback(async () => {
     if (!token || !userEmail) return;
@@ -78,5 +79,12 @@ export function useOrders(token: string, isAdmin: boolean, userEmail?: string) {
     }
   }, [token, isAdmin, userEmail]);
 
-  return { orders, setOrders, firmalar, ht, setHt, firmaId, firmaAd, loading, err, yukle };
+  const firmaHesapDurum = firmalar.find(f => f.id === firmaId)?.hesap_durum;
+  const hesapAktif = !["pasif", "iptal"].includes(firmaHesapDurum || "");
+
+    return { 
+      orders, setOrders, firmalar, ht, setHt, 
+      firmaId, firmaAd, loading, err, yukle,
+      hesapAktif  // ← YENİ
+    };
 }

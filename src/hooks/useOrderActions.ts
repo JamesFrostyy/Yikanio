@@ -10,6 +10,7 @@ interface UseOrderActionsParams {
   ht: HaliTuru[];
   firmaId: string;
   isAdmin: boolean;
+  hesapAktif: boolean;
   showToast: (msg: string, type?: string) => void;
 }
 
@@ -20,11 +21,16 @@ export function useOrderActions({
   ht,
   firmaId,
   isAdmin,
+  hesapAktif,
   showToast,
 }: UseOrderActionsParams) {
 
   const handleSave = async (form: OrderForm, editingId: string | null) => {
     if (!user) return;
+    if (!isAdmin && !hesapAktif) {
+    showToast("Hesabınız aktif değil. Yöneticinizle iletişime geçin.", "error");
+    return;
+  }
     const resolvedFirmaId = isAdmin ? form.firmaId : firmaId;
     await dbKaydet(form, editingId, ht, user.token, resolvedFirmaId);
     showToast(editingId ? "Sipariş güncellendi!" : "Sipariş oluşturuldu!");
@@ -32,6 +38,10 @@ export function useOrderActions({
 
   const handleStatus = async (id: string, durum: string) => {
     if (!user) return;
+    if (!isAdmin && !hesapAktif) {
+    showToast("Hesabınız aktif değil.", "error");
+    return;
+  }
     await sbFetch(
       `siparisler?id=eq.${id}`,
       { method: "PATCH", prefer: "return=minimal", body: JSON.stringify({ durum }) },
