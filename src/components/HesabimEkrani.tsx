@@ -303,9 +303,9 @@ function OdemeModal({
 
   // Shopier linkleri — her paket için kendi linkinizi girin
   const SHOPIER_LINKLER: Record<PaketTip, string> = {
-    starter:    "https://www.shopier.com/yikanio-starter",
-    pro:        "https://www.shopier.com/yikanio-pro",
-    enterprise: "https://www.shopier.com/yikanio-enterprise",
+    starter:    "https://www.shopier.com/yikanio/45250042",
+    pro:        "https://www.shopier.com/yikanio/45250349",
+    enterprise: "https://www.shopier.com/yikanio/45250439",
   };
 
   const shopierOdemeBaslat = async () => {
